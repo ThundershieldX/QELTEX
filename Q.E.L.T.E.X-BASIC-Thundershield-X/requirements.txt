@@ -1,0 +1,51 @@
+﻿# --- qeltex Core & AI Engine ---
+google-genai
+requests
+typing-extensions
+python-dotenv
+pycryptodome
+
+# --- Graphical User Interface (UI) ---
+PyQt6
+PyQt6-WebEngine
+pywebview
+pythonnet
+Pillow
+
+# --- Automation & OS Control ---
+pyautogui
+pyperclip
+psutil
+send2trash
+playwright
+
+# --- Windows Specific Automation ---
+pygetwindow
+comtypes
+pycaw
+win10toast
+pywinauto
+pywin32
+
+# --- Vision, Screen & Media Processing ---
+opencv-python
+numpy
+mss
+pydub
+pygame
+scapy
+sounddevice
+
+# --- Web Scraping & Search ---
+beautifulsoup4
+duckduckgo-search
+
+# --- Advanced File & Document Processing ---
+pandas
+openpyxl
+python-docx
+python-pptx
+pdfplumber
+pypdf
+PyPDF2
+reportlab

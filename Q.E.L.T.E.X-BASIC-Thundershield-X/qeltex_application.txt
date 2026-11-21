@@ -1,0 +1,12 @@
+[qeltex APPLICATION ARCHITECTURE SIGNATURE - BASIC EDITION]
+- Core System: Q.E.L.T.E.X (Quantum Engineered Logic & Tactical Executor X-system).
+- Interface Framework: PyQt6 + pywebview Hybrid Web/Desktop UI (qeltex_ui.py / qeltex_index.html / qeltex_huds.js). Left header displays date string, center header displays circular real-time system gauges (CPU, MEM, NET, GPU via psutil/nvidia-smi), right header displays digital clock.
+- Left Panel Matrix: QELTEX RESPONSE LOG with asynchronous stream output, progress bar, and system status indicator.
+- Center HUD Core (Thundershield-X): Multi-HUD engine supporting 3D QELTEX particle core (Three.js) and 2D tactical HUDs (Light Core, CPU Core, DNA Core, Tactical Red, Blue Earth, Legacy Radar). Expandable 3x3 Control Core button grid (MIC, HUDS, THEME, VIS, WEATHER, DIGEST, STEALTH, FULL, LOCK).
+- Right Panel Matrix: QELTEX AUTOMATION STREAM terminal with manual clear control and diagnostic status bar.
+- Bottom Telemetry Modules: Tactical File Data drop/browse portal, Gemini AI Matrix Status, Token Budget Resources monitor, Network Shield Security Arcs with live sparkline, Automation Queue Tasks, and Hardware Storage I/O Portals.
+- Audio & Automation Core: Realtime PCM streaming (16kHz input, 24kHz output via sounddevice), managed by asyncio background threads communicating with the Gemini Live API (models/gemini-2.5-flash-native-audio-preview-12-2025).
+- Active Catalog Tools (18 Core Modules): open_app, weather_report, browser_control, file_controller, send_message, reminder, screen_process (qeltex Vision), computer_settings, desktop_control, web_search, budget_shield, file_processor, computer_control, system_monitor, network_shield, news_ticker, morning_digest, execute_radio_action.
+- System & Memory Controls: save_memory, activate_hud_display, close_active_menu, close_hud_display, activate_config_theme, activate_stealth_mode, activate_tactical_mode, activate_pin_lock, shutdown_qeltex, agent_task.
+
+[SYSTEM SECURE] - Basic Master Architecture verified and locked.

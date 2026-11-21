@@ -1,0 +1,47 @@
+I am building a new custom module for Q.E.L.T.E.X Basic (developed by Thundershield-X).
+Here is the complete technical architecture and all rules you MUST follow when writing new modules in actions/:
+
+1. CODE AND DESIGN RULES:
+- Never write comments (# or //) or docstrings in the code you provide. Deliver only clean, ready-to-use code.
+- Use dynamic API key lookup from config/api_keys.json (via get_base_dir() / "config" / "api_keys.json" -> data.get("gemini_api_key", "")). Never hardcode API keys, file paths, or usernames.
+- Never use ANSI color codes (\033[...) in text sent to the interface.
+
+2. THE 18 EXISTING BASIC TOOLS (already located in actions/ and qeltex_main.py):
+open_app, weather_report, browser_control, file_controller, send_message, reminder, screen_process, computer_settings, desktop_control, web_search, budget_shield, file_processor, computer_control, system_monitor, network_shield, news_ticker, morning_digest, execute_radio_action.
+(Plus UI/system commands: save_memory, activate_hud_display, close_active_menu, close_hud_display, activate_config_theme, activate_stealth_mode, activate_tactical_mode, activate_pin_lock, shutdown_qeltex, agent_task).
+
+3. HOW TO INTEGRATE A NEW MODULE INTO THE SYSTEM (4 PLACES):
+When creating a new file (e.g., actions/my_module.py with the function def my_module(parameters: dict = None, player=None) -> str:):
+- Step A (actions/my_module.py): The module itself. Must accept (parameters: dict = None, player=None) and return a short, clear text string to the AI.
+- Step B (qeltex_main.py):
+  1) Import the function at the top under the try/except block.
+  2) Add FunctionDeclaration to tool_declarations inside _build_config().
+  3) Add elif name == "my_module": inside _execute_tool(self, fc) and return the result string.
+- Step C (agent/planner.py & agent/executor.py):
+  1) Add the tool name and parameters to PLANNER_PROMPT in agent/planner.py.
+  2) Add elif tool == "my_module": inside _call_tool() in agent/executor.py.
+- Step D (Optional UI button in qeltex_ui.py + qeltex_index.html):
+  If the module should have a quick button in the Control Core grid in qeltex_index.html, add a method to class JsApi in qeltex_ui.py that runs in a daemon thread and calls the module directly (without tokens).
+
+4. HOW TO WRITE TO THE RIGHT TERMINAL AND LEFT LOG (FROM AN ACTION):
+The interface runs in pywebview, and the player object (qeltexUI) has the following thread-safe methods:
+- Write to the RIGHT terminal (QELTEX AUTOMATION STREAM):
+  if player and hasattr(player, "_win") and hasattr(player._win, "qeltex_terminal_stream"):
+      player._win.qeltex_terminal_stream.write_output("Your text here")
+- Clear the right terminal:
+  if player and hasattr(player, "_win") and hasattr(player._win, "qeltex_terminal_stream"):
+      player._win.qeltex_terminal_stream.clear()
+- Write to the LEFT response log (QELTEX RESPONSE LOG):
+  if player and hasattr(player, "write_log"):
+      player.write_log("Your text here")
+- Display error banner in UI:
+  if player and hasattr(player, "set_error_text"):
+      player.set_error_text("Error message")
+
+5. HOW TO OPEN A SEPARATE PYQT6 DISPLAY WINDOW (LIKE WEATHER_REPORT & SYSTEM_MONITOR):
+IMPORTANT: The main process runs pywebview + QApplication on the main thread. If an action runs on a background thread and needs to open a PyQt6 window (QMainWindow), it MUST be launched in a separate process via multiprocessing.Process (with daemon=True) that checks app = QApplication.instance() or QApplication(sys.argv), shows the window, and runs sys.exit(app.exec()) – exactly like actions/weather_report.py and actions/system_monitor.py do! Use a dark theme (#0b111e / #050505) with neon accents (#00ff55 / #00ffcc / #00bfff) and Consolas/Segoe UI font.
+
+6. HOW AI RESPONSES CONNECT TO SPEECH / TEXT:
+When _execute_tool() in qeltex_main.py returns the result string from the action function, the Gemini Live model automatically receives the response and reads/summarizes it to the user. Therefore, keep the return value concise, while writing long tables, reports, and lists to the right terminal (qeltex_terminal_stream) or displaying them in a separate PyQt6 window.
+
+I am now ready to describe the first new module we are going to build!

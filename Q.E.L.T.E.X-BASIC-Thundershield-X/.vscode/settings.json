@@ -1,0 +1,19 @@
+{
+    "python-envs.defaultEnvManager": "ms-python.python:system",
+    "python.analysis.diagnosticMode": "openFilesOnly",
+    "python.analysis.exclude": [
+        "**/.*",
+        "**/node_modules",
+        "**/__pycache__",
+        "**/.venv",
+        "**/venv",
+        "**/build",
+        "**/dist"
+    ],
+    "python.analysis.packageIndexDepths": [
+        {
+            "name": "",
+            "depth": 2
+        }
+    ]
+}

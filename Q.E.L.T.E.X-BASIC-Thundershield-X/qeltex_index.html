@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<title>Q.E.L.T.E.X — THUNDERSHIELD PROTOCOL</title>
+<script src="three.min.js"></script>
+<script src="qeltex_huds.js"></script>
+<style>
+  :root {
+    --bg: #000301;
+    --panel: #000a03;
+    --panel2: #001005;
+    --dark: #000201;
+    --border: #003b14;
+    --border-a: #007722;
+    --theme: #00ff55;
+    --pri-dim: #00aa3c;
+    --pri-gho: #001504;
+    --acc: #39ff14;
+    --acc2: #ccff00;
+    --text: #66ffaa;
+    --text-med: #00cc44;
+    --red: #ff003c;
+    --white: #e6ffee;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier New', Courier, monospace;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* TOP HEADER */
+  #header {
+    height: 56px;
+    background: var(--dark);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    flex-shrink: 0;
+    z-index: 20;
+  }
+
+  .hdr-date, .hdr-clock {
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--theme);
+    min-width: 170px;
+  }
+  .hdr-clock { text-align: right; }
+
+  .hdr-center-group {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+  }
+
+  .gauge-pair {
+    display: flex;
+    gap: 14px;
+  }
+
+  .gauge {
+    width: 48px;
+    height: 48px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .gauge svg {
+    position: absolute;
+    inset: 0;
+    transform: rotate(-90deg);
+  }
+  .gauge circle.bg {
+    fill: none;
+    stroke: var(--border-a);
+    stroke-width: 1.5;
+    stroke-dasharray: 3 3;
+  }
+  .gauge circle.fg {
+    fill: none;
+    stroke: var(--theme);
+    stroke-width: 2.5;
+    stroke-dasharray: 132;
+    stroke-dashoffset: 132;
+    transition: stroke-dashoffset 0.4s ease, stroke 0.3s;
+  }
+  .gauge-lbl {
+    font-size: 9px;
+    font-weight: bold;
+    color: var(--theme);
+    line-height: 1.1;
+  }
+  .gauge-val {
+    font-size: 9px;
+    font-weight: bold;
+    color: var(--theme);
+    line-height: 1.1;
+  }
+
+  .title-box {
+    text-align: center;
+  }
+  .title-box h1 {
+    font-size: 20px;
+    letter-spacing: 3px;
+    color: var(--theme);
+  }
+  .title-box p {
+    font-size: 9px;
+    color: var(--pri-dim);
+  }
+
+  /* MAIN WORKSPACE */
+  #workspace {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 420px 1fr;
+    gap: 18px;
+    padding: 10px 26px 8px 26px;
+    min-height: 0;
+    position: relative;
+  }
+
+  body.stealth-mode #header,
+  body.stealth-mode #left-panel,
+  body.stealth-mode #right-panel,
+  body.stealth-mode #cmd-row,
+  body.stealth-mode #bottom-modules,
+  body.stealth-mode #footer {
+    display: none !important;
+  }
+  body.stealth-mode #workspace {
+    grid-template-columns: 1fr;
+  }
+
+  #stealth-return-btn {
+    display: none;
+    position: fixed;
+    left: 26px;
+    bottom: 26px;
+    z-index: 90;
+    background: var(--panel2);
+    color: var(--theme);
+    border: 1px solid var(--theme);
+    padding: 10px 18px;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  body.stealth-mode #stealth-return-btn {
+    display: block;
+  }
+
+  /* PANELS */
+  .side-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .panel-hdr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    font-size: 10px;
+    font-weight: bold;
+    color: var(--theme);
+  }
+
+  .btn-clear {
+    background: transparent;
+    color: var(--pri-dim);
+    border: 1px solid var(--border);
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: bold;
+    padding: 1px 6px;
+    cursor: pointer;
+  }
+  .btn-clear:hover {
+    color: var(--red);
+    border-color: var(--red);
+    background: #150003;
+  }
+
+  .log-box {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    position: relative;
+    padding: 18px 12px 12px 12px;
+    overflow-y: auto;
+    font-size: 11px;
+    font-weight: bold;
+    line-height: 1.45;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    cursor: text;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .log-box * {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+  }
+
+  .corner-hud::before,
+  .corner-hud::after,
+  .hex-tag {
+    pointer-events: none !important;
+  }
+
+  /* Automatisk skalering av skrift og elementer ved F11 fullskjerm */
+  body.fullscreen-mode .log-box,
+  body.fullscreen-mode #terminal-output {
+    font-size: 16px;
+    line-height: 1.6;
+    padding: 24px 18px 18px 18px;
+  }
+  body.fullscreen-mode .panel-hdr,
+  body.fullscreen-mode .panel-foot,
+  body.fullscreen-mode .gauge-lbl,
+  body.fullscreen-mode .ctrl-btn,
+  body.fullscreen-mode #cmd-input {
+    font-size: 14.5px;
+  }
+  body.fullscreen-mode #hdr-title {
+    font-size: 21px;
+  }
+  body.fullscreen-mode #hdr-clock {
+    font-size: 23px;
+  }
+  body.fullscreen-mode #terminal-output {
+    font-size: 14px;
+  }
+
+  #terminal-output {
+    background: #000702;
+    color: var(--text-med);
+    font-size: 10.5px;
+  }
+
+  /* HUD CORNER BRACKETS */
+  .corner-hud {
+    position: relative;
+  }
+  .corner-hud::before, .corner-hud::after {
+    content: "";
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .corner-hud::before {
+    top: 2px;
+    left: 2px;
+    border-top: 1.5px solid var(--theme);
+    border-left: 1.5px solid var(--theme);
+  }
+  .corner-hud::after {
+    bottom: 2px;
+    right: 2px;
+    border-bottom: 1.5px solid var(--theme);
+    border-right: 1.5px solid var(--theme);
+  }
+
+  .hex-tag {
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    font-size: 8px;
+    color: var(--theme);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  .panel-foot {
+    margin-top: 4px;
+    font-size: 10px;
+    font-weight: bold;
+  }
+
+  #progress-wrap {
+    height: 3px;
+    background: var(--bg);
+    margin-top: 4px;
+  }
+  #progress-bar {
+    height: 100%;
+    width: 0%;
+    background: #00ffcc;
+    transition: width 0.2s;
+  }
+
+  #status-lbl {
+    color: var(--border-a);
+    margin-top: 2px;
+  }
+
+  #error-diag-lbl {
+    color: var(--red);
+  }
+
+  /* CENTER 3D CORE */
+  #center-core {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    position: relative;
+    min-height: 0;
+  }
+
+  #qeltex-container {
+    width: 100%;
+    height: 360px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #qeltex-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  #core-top-title {
+    position: absolute;
+    top: 42px;
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--white);
+    letter-spacing: 1px;
+    text-shadow: 0 0 8px var(--theme);
+    pointer-events: none;
+  }
+
+  #core-state-lbl {
+    position: absolute;
+    bottom: 36px;
+    font-size: 11px;
+    font-weight: bold;
+    color: var(--theme);
+    letter-spacing: 1.5px;
+    pointer-events: none;
+  }
+
+  #eq-bars {
+    position: absolute;
+    bottom: 14px;
+    display: flex;
+    gap: 2px;
+    height: 14px;
+    align-items: flex-end;
+    pointer-events: none;
+  }
+  .eq-bar {
+    width: 4px;
+    height: 3px;
+    background: var(--border-a);
+    transition: height 0.08s;
+  }
+
+  /* ENGAGE CONTROL CORE & 3x5 GRID */
+  #engage-btn {
+    width: 340px;
+    height: 26px;
+    background: rgba(0, 20, 5, 0.55);
+    color: var(--theme);
+    border: 1px solid var(--border);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    letter-spacing: 1px;
+    z-index: 30;
+  }
+  #engage-btn:hover {
+    background: var(--pri-gho);
+    color: var(--white);
+    border-color: var(--theme);
+  }
+
+  #control-grid {
+    display: none;
+    width: 340px;
+    margin-top: 6px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+    z-index: 35;
+  }
+  #control-grid.open {
+    display: grid;
+  }
+
+  .core-btn {
+    height: 28px;
+    background: rgba(0, 8, 2, 0.9);
+    border: 1px solid var(--border);
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: bold;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 4px;
+  }
+  .core-btn:hover {
+    background: var(--pri-gho);
+    color: var(--white) !important;
+  }
+
+  /* DROPDOWN POPOVER */
+  #dropdown-popover {
+    display: none;
+    position: fixed;
+    background: var(--dark);
+    border: 1px solid var(--theme);
+    box-shadow: 0 0 24px rgba(0, 255, 85, 0.25);
+    padding: 10px;
+    z-index: 100;
+    max-height: 440px;
+    overflow-y: auto;
+    min-width: 320px;
+    max-width: 440px;
+  }
+  #dropdown-popover.open {
+    display: block;
+  }
+  .dd-hdr {
+    color: var(--theme);
+    font-size: 11px;
+    font-weight: bold;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 5px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .dd-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 2px;
+    border-bottom: 1px solid rgba(0, 59, 20, 0.4);
+    font-size: 11px;
+    font-weight: bold;
+  }
+  .dd-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--theme);
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 7px;
+    cursor: pointer;
+  }
+  .dd-btn:hover {
+    background: var(--pri-gho);
+    color: var(--white);
+  }
+  .dd-btn.on { color: #00ff55; border-color: #00ff55; }
+  .dd-btn.off { color: #ff003c; border-color: #ff003c; }
+
+  /* ERROR BANNER */
+  #error-banner {
+    display: none;
+    margin: 0 26px 6px 26px;
+    height: 32px;
+    background: #150003;
+    border: 1px solid var(--red);
+    color: var(--red);
+    padding: 0 12px;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: bold;
+  }
+  #error-banner.open { display: flex; }
+
+  /* COMMAND BAR */
+  #cmd-row {
+    display: flex;
+    gap: 8px;
+    padding: 0 26px 8px 26px;
+    height: 56px;
+    flex-shrink: 0;
+  }
+  #cmd-input {
+    flex: 1;
+    background: var(--dark);
+    color: var(--white);
+    border: 1px solid var(--border);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: bold;
+    padding: 8px 12px;
+    resize: none;
+    outline: none;
+  }
+  #cmd-input:focus {
+    border-color: var(--theme);
+  }
+  #send-btn {
+    width: 82px;
+    background: var(--panel);
+    color: var(--theme);
+    border: 1px solid var(--border-a);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  #send-btn:hover {
+    background: var(--pri-gho);
+    border-color: var(--theme);
+  }
+
+   /* 6 BOTTOM MODULES */
+  #bottom-modules {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    padding: 0 26px 10px 26px;
+    flex-shrink: 0;
+  }
+  .mod-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+  .mod-title {
+    font-size: 9px;
+    font-weight: bold;
+    color: var(--text-med);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mod-box {
+    height: 52px;
+    background: var(--panel2);
+    border: 1px solid var(--border-a);
+    padding: 6px 8px;
+    font-size: 9.5px;
+    font-weight: bold;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #drop-box {
+    border-style: dashed;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    color: var(--theme);
+  }
+  #drop-box:hover {
+    background: #001806;
+  }
+
+  #budget-box {
+    align-items: center;
+    text-align: center;
+    color: var(--theme);
+    font-size: 10px;
+  }
+
+  /* FOOTER */
+  #footer {
+    height: 22px;
+    background: var(--dark);
+    border-top: 1px solid var(--border);
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 9.5px;
+    font-weight: bold;
+    color: var(--theme);
+    flex-shrink: 0;
+  }
+  .ftr-left {
+    display: flex;
+    gap: 14px;
+  }
+
+  /* OVERLAYS (PIN LOCK & SETUP) */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000301;
+    z-index: 200;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+  }
+  .modal-overlay.open { display: flex; }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border-a); }
+</style>
+</head>
+<body>
+  <header id="header">
+    <div class="hdr-date" id="hdr-date">--- -- --- ----</div>
+
+    <div class="hdr-center-group">
+      <div class="gauge-pair">
+        <div class="gauge" id="g-cpu">
+          <svg viewBox="0 0 48 48"><circle class="bg" cx="24" cy="24" r="21"/><circle class="fg" cx="24" cy="24" r="21"/></svg>
+          <span class="gauge-lbl">CPU</span>
+          <span class="gauge-val">--%</span>
+        </div>
+        <div class="gauge" id="g-mem">
+          <svg viewBox="0 0 48 48"><circle class="bg" cx="24" cy="24" r="21"/><circle class="fg" cx="24" cy="24" r="21"/></svg>
+          <span class="gauge-lbl">MEM</span>
+          <span class="gauge-val">--%</span>
+        </div>
+      </div>
+
+      <div class="title-box">
+        <h1>Q.E.L.T.E.X</h1>
+        <p>(Quantum Engineered Logic &amp; Tactical Executor X-system)</p>
+      </div>
+
+      <div class="gauge-pair">
+        <div class="gauge" id="g-net">
+          <svg viewBox="0 0 48 48"><circle class="bg" cx="24" cy="24" r="21"/><circle class="fg" cx="24" cy="24" r="21"/></svg>
+          <span class="gauge-lbl">NET</span>
+          <span class="gauge-val">--</span>
+        </div>
+        <div class="gauge" id="g-gpu">
+          <svg viewBox="0 0 48 48"><circle class="bg" cx="24" cy="24" r="21"/><circle class="fg" cx="24" cy="24" r="21"/></svg>
+          <span class="gauge-lbl">GPU</span>
+          <span class="gauge-val">N/A</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hdr-clock" id="hdr-clock">00:00:00</div>
+  </header>
+
+  <main id="workspace">
+    <section class="side-panel" id="left-panel">
+      <div class="panel-hdr">
+        <span>▸ QELTEX RESPONSE LOG</span>
+        <button class="btn-clear" onclick="clearLog()">✕ CLEAR</button>
+      </div>
+      <div class="log-box corner-hud" id="response-log">
+        <span class="hex-tag" id="hex-left">0x4A 0x9F</span>
+      </div>
+      <div class="panel-foot">
+        <div id="progress-wrap"><div id="progress-bar"></div></div>
+        <div id="status-lbl">QELTEX Core: System Standby</div>
+      </div>
+    </section>
+
+    <section id="center-core">
+      <div id="qeltex-container">
+        <div id="core-top-title">Thundershield-X</div>
+        <canvas id="qeltex-canvas"></canvas>
+        <canvas id="hud-2d-canvas" style="position:absolute; inset:0; width:100%; height:100%; display:none; pointer-events:none;"></canvas>
+        <img id="img-blue-earth" src="config/world_map.png" style="display:none;">
+        <div id="core-state-lbl">● LISTENING</div>
+        <div id="eq-bars"></div>
+      </div>
+
+      <button id="engage-btn" onclick="toggleControlCore()">◈ ENGAGE CONTROL CORE ◈</button>
+
+      <div id="control-grid">
+        <button class="core-btn" id="btn-mic" style="color:#00ff55; border-bottom:2px solid #00ff55;" onclick="toggleMute()">🎙 MIC [F4]</button>
+        <button class="core-btn" id="btn-huds" style="color:#00ff55; border-bottom:2px solid #00ff55;" onclick="openMenu(event, 'huds')">⚙️ HUDS ▾</button>
+        <button class="core-btn" id="btn-theme" style="color:#00ffcc; border-bottom:2px solid #00ffcc;" onclick="openMenu(event, 'theme')">🎨 THEME ▾</button>
+
+        <button class="core-btn" style="color:#ccff00; border-bottom:2px solid #ccff00;" onclick="pywebview.api.trigger_vision()">👁 VIS [F2]</button>
+        <button class="core-btn" style="color:#00bfff; border-bottom:2px solid #00bfff;" onclick="pywebview.api.trigger_weather()">☀️ WEATHER</button>
+        <button class="core-btn" style="color:#ffaa00; border-bottom:2px solid #ffaa00;" onclick="pywebview.api.send_command('Gi meg morgenbrifing')">📰 DIGEST</button>
+
+        <button class="core-btn" style="color:#00aa3c; border-bottom:2px solid #00aa3c;" onclick="window.qeltexBridge.setStealthMode(true); pywebview.api.set_stealth(true)">🥷 STEALTH [F7]</button>
+        <button class="core-btn" style="color:#00cc44; border-bottom:2px solid #007722;" onclick="pywebview.api.toggle_fullscreen()">⛶ FULL [F11]</button>
+        <button class="core-btn" style="color:#ff0055; border-bottom:2px solid #ff003c;" onclick="pywebview.api.activate_pin_lock && pywebview.api.activate_pin_lock()">🔒 LOCK [F12]</button>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL -->
+    <section class="side-panel" id="right-panel">
+      <div class="panel-hdr">
+        <span>▸ QELTEX AUTOMATION STREAM</span>
+        <button class="btn-clear" onclick="clearTerminal()">✕ CLEAR</button>
+      </div>
+      <div class="log-box corner-hud" id="terminal-output">QELTEX AUTOMATION STREAM : IDLE
+        <span class="hex-tag" id="hex-right">0x8B 0x1C</span>
+      </div>
+      <div class="panel-foot">
+        <div id="error-diag-lbl">QELTEX SYSTEM LOG: ERRORS DIAGNOSTIC READY</div>
+      </div>
+    </section>
+  </main>
+
+  <button id="stealth-return-btn" onclick="window.qeltexBridge.setStealthMode(false); pywebview.api.set_stealth(false)">▸ TACTICAL HUD [ESC]</button>
+  <div id="dropdown-popover"></div>
+
+  <!-- ERROR OVERLAY BANNER -->
+  <div id="error-banner">
+    <span id="error-banner-txt"></span>
+    <button class="dd-btn off" onclick="setErrorBanner('')">✕</button>
+  </div>
+
+  <!-- COMMAND BAR -->
+  <div id="cmd-row">
+    <textarea id="cmd-input" placeholder="TRANSMIT PRIMARY COMMAND SEQUENCE TO Q.E.L.T.E.X CORPS INSTRUCTIONS…"></textarea>
+    <button id="send-btn" onclick="sendCmd()">▸ SEND</button>
+  </div>
+
+  <!-- 6 BOTTOM MODULES -->
+  <section id="bottom-modules">
+    <div class="mod-wrap">
+      <div class="mod-title">▸ TACTICAL FILE DATA</div>
+      <div class="mod-box" id="drop-box" onclick="pywebview.api.browse_file()">
+        <div id="drop-txt">⬆ Drop file/Click browse</div>
+      </div>
+    </div>
+
+    <div class="mod-wrap">
+      <div class="mod-title">▸ GEMINI AI MATRIX STATUS</div>
+      <div class="mod-box">
+        <div>API CONNECTION : PAID TIER</div>
+        <div>LATENCY STREAM : 42 ms</div>
+        <div>TOKEN RESOURCE : STABLE</div>
+      </div>
+    </div>
+
+    <div class="mod-wrap">
+      <div class="mod-title">▸ TOKEN BUDGET RESOURCES</div>
+      <div class="mod-box" id="budget-box">BUDGET REMAINING: $5.0 / $5.0</div>
+    </div>
+
+    <div class="mod-wrap">
+      <div class="mod-title">▸ NETWORK SHIELD SECURITY ARCS</div>
+      <div class="mod-box">
+        <div>THUNDERSHIELD GATE: SECURE</div>
+        <div>INTERCEPT COUNTER : 0</div>
+        <canvas id="net-sparkline" width="180" height="16" style="margin-top:2px;"></canvas>
+      </div>
+    </div>
+
+    <div class="mod-wrap">
+      <div class="mod-title">▸ AUTOMATION QUEUE TASKS</div>
+      <div class="mod-box">
+        <div>QUEUE INDEX : STANDBY</div>
+        <div style="font-size:8.5px; opacity:0.85;">NO BACKGROUND ASYNC THREADS</div>
+      </div>
+    </div>
+
+    <div class="mod-wrap">
+      <div class="mod-title">▸ HARDWARE STORAGE I/O PORTALS</div>
+      <div class="mod-box">
+        <div id="disk-r-lbl">DISK READ  PORTAL : 0.00 MB/s</div>
+        <div id="disk-w-lbl">DISK WRITE PORTAL : 0.00 MB/s</div>
+      </div>
+    </div>
+  </section>
+
+  <footer id="footer">
+    <div class="ftr-left">
+      <span id="ftr-up">UP  --:--</span>
+      <span id="ftr-proc">PROC  --</span>
+      <span id="ftr-os">OS  WIN</span>
+    </div>
+    <div>Thundershield-X  ·  QELTEX LAYER INTERFACE  ·  CLASSIFIED MATERIAL</div>
+    <div>© Thundershield-X</div>
+  </footer>
+
+  <div id="pin-modal" class="modal-overlay open">
+    <h1 style="font-size:32px; letter-spacing:4px; color:var(--theme);">Q.E.L.T.E.X</h1>
+    <div id="pin-cam-status" style="font-size:11px; color:var(--text);"></div>
+    <input type="password" id="pin-input" maxlength="8" placeholder="••••" autofocus
+      style="background:var(--dark); color:var(--white); border:1px solid var(--theme); font-family:inherit; font-size:24px; text-align:center; width:200px; padding:8px; outline:none;">
+    <div id="pin-hint" style="font-size:10px; color:var(--theme);">SECURE SYSTEM PORTAL ENGAGED — ENTER PIN TO UNLOCK</div>
+  </div>
+
+  <div id="setup-modal" class="modal-overlay">
+    <div style="border:1px solid var(--theme); background:var(--panel); padding:26px; width:420px; display:flex; flex-direction:column; gap:12px;">
+      <div style="text-align:center; font-size:14px; font-weight:bold; color:var(--theme);">◈ INITIALIZATION REQUIRED</div>
+      <div style="font-size:10px;">GEMINI API KEY</div>
+      <input type="password" id="setup-key" placeholder="AIza…" style="background:var(--dark); color:var(--white); border:1px solid var(--border); padding:8px; font-family:inherit;">
+      <div style="font-size:10px;">OPERATING SYSTEM</div>
+      <select id="setup-os" style="background:var(--dark); color:var(--theme); border:1px solid var(--border); padding:8px; font-family:inherit;">
+        <option value="windows">Windows</option>
+        <option value="mac">macOS</option>
+        <option value="linux">Linux</option>
+      </select>
+      <button class="dd-btn" style="padding:10px; font-size:12px;" onclick="submitSetup()">▸ INITIALIZE CORE</button>
+    </div>
+  </div>
+
+<script>
+let appState = {
+  theme: "green",
+  hud: "classic",
+  muted: false,
+  state: "LISTENING"
+};
+
+let activeMenuType = null;
+let netHistory = Array(36).fill(18);
+
+const THEME_PALETTES = {
+  green:  { theme: "#00ff55", border: "#003b14", borderA: "#007722", hex: 0x00ff55 },
+  blue:   { theme: "#00a2ff", border: "#002b47", borderA: "#00558f", hex: 0x00a2ff },
+  red:    { theme: "#ff3344", border: "#47000d", borderA: "#8f001a", hex: 0xff3344 },
+  yellow: { theme: "#ffcc00", border: "#423b00", borderA: "#8a7a00", hex: 0xffcc00 },
+  purple: { theme: "#d400ff", border: "#330047", borderA: "#7700a3", hex: 0xd400ff },
+  cyan:   { theme: "#00f7ff", border: "#004247", borderA: "#00868f", hex: 0x00f7ff }
+};
+
+const HUD_COLORS = {
+  "tactical red": 0xff3344,
+  "tactical": 0xff3344,
+  "red planet": 0xff5522,
+  "blue earth": 0x00a2ff,
+  "blue planet": 0x00f7ff,
+  "dna core": 0x00ff55,
+  "classic": 0x00ff55,
+  "light core": 0x66ffaa,
+  "cpu core": 0xccff00,
+  "legacy radar": 0x39ff14
+};
+
+function applyThemeCss(name) {
+  const pal = THEME_PALETTES[name] || THEME_PALETTES.green;
+  const r = document.documentElement.style;
+  r.setProperty("--theme", pal.theme);
+  r.setProperty("--border", pal.border);
+  r.setProperty("--border-a", pal.borderA);
+  updateQeltexPalette(pal.hex);
+}
+
+function setGauge(id, pct, labelText) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const clamped = Math.max(0, Math.min(100, pct || 0));
+  const circle = el.querySelector("circle.fg");
+  const valEl = el.querySelector(".gauge-val");
+  const offset = 132 - (clamped / 100) * 132;
+  circle.style.strokeDashoffset = offset;
+  circle.style.stroke = clamped > 85 ? "#ff003c" : (clamped > 65 ? "#ccff00" : "var(--theme)");
+  valEl.textContent = labelText;
+}
+
+function toggleControlCore() {
+  const grid = document.getElementById("control-grid");
+  const btn = document.getElementById("engage-btn");
+  const open = grid.classList.toggle("open");
+  btn.textContent = open ? "◈ TERMINATE CONTROL CORE ◈" : "◈ ENGAGE CONTROL CORE ◈";
+  if (!open) closeDropdown();
+}
+
+function setControlCore(visible) {
+  const grid = document.getElementById("control-grid");
+  const btn = document.getElementById("engage-btn");
+  if (visible) {
+    grid.classList.add("open");
+    btn.textContent = "◈ TERMINATE CONTROL CORE ◈";
+  } else {
+    grid.classList.remove("open");
+    btn.textContent = "◈ ENGAGE CONTROL CORE ◈";
+    closeDropdown();
+  }
+}
+
+function toggleMute() {
+  if (window.pywebview && pywebview.api) {
+    pywebview.api.toggle_mute();
+  }
+}
+
+function updateMuteButton(isMuted) {
+  appState.muted = isMuted;
+  const btn = document.getElementById("btn-mic");
+  if (!btn) return;
+  if (isMuted) {
+    btn.textContent = "⊘ MUTED [F4]";
+    btn.style.color = "#ff0055";
+    btn.style.borderBottomColor = "#ff0055";
+  } else {
+    btn.textContent = "🎙 MIC [F4]";
+    btn.style.color = "#00ff55";
+    btn.style.borderBottomColor = "#00ff55";
+  }
+}
+
+function closeDropdown() {
+  const pop = document.getElementById("dropdown-popover");
+  pop.classList.remove("open");
+  activeMenuType = null;
+}
+
+function openMenu(ev, type, anchorId = null) {
+  if (ev) ev.stopPropagation();
+  const pop = document.getElementById("dropdown-popover");
+
+  if (ev && activeMenuType === type && pop.classList.contains("open")) {
+    closeDropdown();
+    return;
+  }
+
+  activeMenuType = type;
+  setControlCore(true);
+
+  const anchor = ev ? ev.currentTarget : document.getElementById(anchorId);
+  if (anchor) {
+    const rect = anchor.getBoundingClientRect();
+    pop.style.left = Math.min(window.innerWidth - 450, Math.max(10, rect.left)) + "px";
+    pop.style.top = Math.min(window.innerHeight - 480, Math.max(62, rect.bottom + 4)) + "px";
+  }
+
+  renderMenuContent(type);
+  pop.classList.add("open");
+}
+
+function renderMenuContent(type) {
+  const pop = document.getElementById("dropdown-popover");
+  let html = "";
+
+  if (type === "huds") {
+    html += `<div class="dd-hdr"><span>⚡ QELTEX HUD DISPLAY MATRIX</span><button class="dd-btn off" onclick="closeDropdown()">✕</button></div>`;
+    const huds = ["3D QELTEX", "LIGHT CORE", "CPU CORE", "DNA CORE", "TACTICAL RED", "BLUE EARTH", "LEGACY RADAR"];
+    huds.forEach(h => {
+      html += `<div class="dd-row"><span>▸ ${h}</span><button class="dd-btn on" onclick="pywebview.api.set_hud('${h.toLowerCase()}')">[ ENGAGE ]</button></div>`;
+    });
+  }
+
+  else if (type === "theme") {
+    html += `<div class="dd-hdr"><span>🎨 QELTEX CONFIG THEMES</span><button class="dd-btn off" onclick="closeDropdown()">✕</button></div>`;
+    ["green", "blue", "red", "yellow", "purple", "cyan"].forEach(t => {
+      html += `<div class="dd-row"><span>▸ THEME ${t.toUpperCase()}</span><button class="dd-btn on" onclick="pywebview.api.set_theme('${t}')">[ ENGAGE ]</button></div>`;
+    });
+  }
+
+     pop.innerHTML = html;
+}
+
+function sendCmd() {
+  const inp = document.getElementById("cmd-input");
+  const txt = inp.value.trim();
+  if (!txt) return;
+  inp.value = "";
+  if (window.pywebview && pywebview.api) {
+    pywebview.api.send_command(txt);
+  }
+}
+
+function clearLog() {
+  const el = document.getElementById("response-log");
+  el.innerHTML = `<span class="hex-tag" id="hex-left">0x4A 0x9F</span>`;
+}
+
+function clearTerminal() {
+  const el = document.getElementById("terminal-output");
+  el.innerHTML = `QELTEX AUTOMATION STREAM : IDLE<span class="hex-tag" id="hex-right">0x8B 0x1C</span>`;
+}
+
+function setErrorBanner(txt) {
+  const bar = document.getElementById("error-banner");
+  const lbl = document.getElementById("error-banner-txt");
+  lbl.textContent = txt || "";
+  bar.classList.toggle("open", Boolean(txt));
+}
+
+function submitSetup() {
+  const k = document.getElementById("setup-key").value.trim();
+  const os = document.getElementById("setup-os").value;
+  if (!k) return;
+  pywebview.api.save_setup(k, os).then(ok => {
+    if (ok) document.getElementById("setup-modal").classList.remove("open");
+  });
+}
+
+window.qeltexBridge = {
+  appendLog(text) {
+    const box = document.getElementById("response-log");
+    const clean = String(text).replace(/^\n+/, "");
+    if (!box.querySelector("div")) {
+      const hex = box.querySelector(".hex-tag");
+      box.textContent = "";
+      if (hex) box.appendChild(hex);
+    }
+    const line = document.createElement("div");
+    line.style.marginBottom = "4px";
+    line.textContent = clean;
+    box.appendChild(line);
+    box.scrollTop = box.scrollHeight;
+  },
+  appendTerminal(text) {
+    const box = document.getElementById("terminal-output");
+    if (box.textContent.includes("QELTEX AUTOMATION STREAM : IDLE")) {
+      clearTerminal();
+    }
+    const line = document.createElement("div");
+    line.style.marginBottom = "3px";
+    line.textContent = text;
+    box.appendChild(line);
+    box.scrollTop = box.scrollHeight;
+  },
+  clearTerminal() { clearTerminal(); },
+  setAiState(state) {
+    qeltexState = state;
+    const lbl = document.getElementById("core-state-lbl");
+    if (state === "MUTED") {
+      lbl.textContent = "⊘ MUTED";
+      lbl.style.color = "#ff0055";
+    } else if (state === "SPEAKING") {
+      lbl.textContent = "● SPEAKING";
+      lbl.style.color = "#39ff14";
+    } else if (state === "THINKING" || state === "PROCESSING") {
+      lbl.textContent = `◈ ${state}`;
+      lbl.style.color = "#ccff00";
+    } else {
+      lbl.textContent = `● ${state}`;
+      lbl.style.color = "var(--theme)";
+    }
+  },
+  setMuted(m) { updateMuteButton(m); },
+  setStatusText(txt) { document.getElementById("status-lbl").textContent = txt; },
+  setProgressValue(val) { document.getElementById("progress-bar").style.width = `${val}%`; },
+  setErrorText(txt) { setErrorBanner(txt); },
+  setTheme(t) {
+    appState.theme = t;
+    applyThemeCss(t);
+  },
+  setHudStyle(h) {
+    appState.hud = (h || "3d qeltex").toLowerCase().trim();
+    activateHudRenderer(appState.hud);
+  },
+  setControlCoreVisible(vis) { setControlCore(vis); },
+  setStealthMode(active) {
+    document.body.classList.toggle("stealth-mode", Boolean(active));
+    setTimeout(() => window.dispatchEvent(new Event("resize")), 40);
+  },
+  setFileLoaded(info) {
+    const box = document.getElementById("drop-txt");
+    box.innerHTML = `📄 ${info.name} (${info.size}) <span style="color:#ff003c;cursor:pointer;" onclick="event.stopPropagation();pywebview.api.clear_file();document.getElementById('drop-txt').textContent='⬆ Drop file/Click browse'">✕</span>`;
+  },
+  showPinLock(data) {
+    const modal = document.getElementById("pin-modal");
+    document.getElementById("pin-cam-status").textContent = "";
+    modal.classList.add("open");
+    const inp = document.getElementById("pin-input");
+    inp.value = "";
+    inp.focus();
+  },
+  closeDropdowns() { closeDropdown(); },
+  updateDeviceLabel(payload) {
+    const { category, text } = payload;
+    if (category === "budget") {
+      document.getElementById("budget-box").textContent = text;
+    }
+  }
+};
+
+/* ============================================================================
+   CLOCK, EQUALIZER, SPARKLINE & KEYBOARD SHORTCUTS
+   ============================================================================ */
+function updateClock() {
+  const now = new Date();
+  document.getElementById("hdr-clock").textContent = now.toTimeString().slice(0, 8);
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  document.getElementById("hdr-date").textContent =
+    `${days[now.getDay()]} ${String(now.getDate()).padStart(2, "0")} ${months[now.getMonth()]} ${now.getFullYear()}`;
+}
+
+function initEqualizerAndSparkline() {
+  const eq = document.getElementById("eq-bars");
+  for (let i = 0; i < 32; i++) {
+    const b = document.createElement("div");
+    b.className = "eq-bar";
+    eq.appendChild(b);
+  }
+  setInterval(() => {
+    const bars = eq.children;
+    for (let i = 0; i < bars.length; i++) {
+      let h = 3;
+      if (qeltexState === "SPEAKING") h = 4 + Math.random() * 10;
+      else if (qeltexState === "LISTENING") h = 3 + Math.abs(Math.sin(Date.now() * 0.006 + i * 0.4)) * 7;
+      bars[i].style.height = `${h}px`;
+      bars[i].style.background = qeltexState === "MUTED" ? "#ff0055" : "var(--theme)";
+    }
+
+    netHistory.shift();
+    netHistory.push(6 + Math.random() * 24);
+    const sc = document.getElementById("net-sparkline");
+    if (sc) {
+      const ctx = sc.getContext("2d");
+      ctx.clearRect(0, 0, sc.width, sc.height);
+      ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--theme").trim() || "#00ff55";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      netHistory.forEach((v, idx) => {
+        const x = (idx / (netHistory.length - 1)) * sc.width;
+        const y = sc.height - (v / 32) * sc.height;
+        idx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+  }, 140);
+}
+
+document.addEventListener("click", () => closeDropdown());
+
+document.getElementById("cmd-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendCmd();
+  }
+});
+
+document.getElementById("pin-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    const val = e.target.value;
+    pywebview.api.verify_pin(val).then(ok => {
+      if (ok) {
+        document.getElementById("pin-modal").classList.remove("open");
+      } else {
+        document.getElementById("pin-hint").textContent = "SECURITY VIOLATION — INVALID ACCESS PIN SEQUENCE";
+        document.getElementById("pin-hint").style.color = "#ff003c";
+        e.target.value = "";
+      }
+    });
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
+    const sel = window.getSelection().toString();
+    if (sel) {
+      navigator.clipboard.writeText(sel).catch(() => {});
+      return;
+    }
+  }
+  if (e.key === "Escape") {
+    closeDropdown();
+    if (document.body.classList.contains("stealth-mode")) {
+      window.qeltexBridge.setStealthMode(false);
+      if (window.pywebview && pywebview.api) pywebview.api.set_stealth(false);
+    }
+    return;
+  }
+  if (!window.pywebview || !pywebview.api) return;
+
+  if (e.shiftKey) {
+    if (e.key === "F10") { e.preventDefault(); openMenu(null, "huds", "btn-huds"); }
+    return;
+  }
+
+  if (e.key === "F2") { e.preventDefault(); pywebview.api.trigger_vision(); }
+  else if (e.key === "F4") { e.preventDefault(); toggleMute(); }
+  else if (e.key === "F7") { e.preventDefault(); window.qeltexBridge.setStealthMode(true); pywebview.api.set_stealth(true); }
+  else if (e.key === "F11") { e.preventDefault(); pywebview.api.toggle_fullscreen(); }
+  else if (e.key === "F12") { e.preventDefault(); pywebview.api.activate_pin_lock(); }
+});
+
+document.addEventListener("contextmenu", (e) => {
+  const sel = window.getSelection().toString();
+  if (sel) {
+    e.preventDefault();
+    navigator.clipboard.writeText(sel).catch(() => {});
+  }
+});
+
+window.addEventListener("pywebviewready", async () => {
+  const init = await pywebview.api.get_initial_state();
+  Object.assign(appState, init);
+  applyThemeCss(appState.theme);
+  activateHudRenderer(appState.hud);
+  updateMuteButton(appState.muted);
+  document.getElementById("ftr-os").textContent = `OS  ${appState.os || "WIN"}`;
+  if (init.budget) {
+    document.getElementById("budget-box").textContent = init.budget;
+  }
+  if (init.pin_required) {
+    window.qeltexBridge.showPinLock({ cameras: [] });
+  } else {
+    const pm = document.getElementById("pin-modal");
+    if (pm) pm.classList.remove("open");
+  }
+  if (!appState.ready) {
+    document.getElementById("setup-modal").classList.add("open");
+  }
+
+  setInterval(async () => {
+    const m = await pywebview.api.get_metrics();
+    setGauge("g-cpu", m.cpu, `${Math.round(m.cpu)}%`);
+    setGauge("g-mem", m.mem, `${Math.round(m.mem)}%`);
+    const netTxt = m.net < 1 ? `${Math.round(m.net * 1024)}KB/s` : `${m.net.toFixed(1)}MB/s`;
+    setGauge("g-net", Math.min(100, (m.net / 31.25) * 100), netTxt);
+    setGauge("g-gpu", m.gpu >= 0 ? m.gpu : 0, m.gpu >= 0 ? `${Math.round(m.gpu)}%` : "N/A");
+
+    if (m.budget) {
+      document.getElementById("budget-box").textContent = m.budget;
+    }
+
+    document.getElementById("disk-r-lbl").textContent = `DISK READ  PORTAL : ${m.r_io.toFixed(2)} MB/s`;
+    document.getElementById("disk-w-lbl").textContent = `DISK WRITE PORTAL : ${m.w_io.toFixed(2)} MB/s`;
+    const h = String(Math.floor(m.uptime / 3600)).padStart(2, "0");
+    const min = String(Math.floor((m.uptime % 3600) / 60)).padStart(2, "0");
+    document.getElementById("ftr-up").textContent = `UP  ${h}:${min}`;
+    document.getElementById("ftr-proc").textContent = `PROC  ${m.procs}`;
+  }, 2000);
+});
+
+window.addEventListener("DOMContentLoaded", () => {
+  initThreeQeltex();
+  drawActive2dHud();
+  initEqualizerAndSparkline();
+  updateClock();
+  setInterval(updateClock, 1000);
+});
+
+window.addEventListener("resize", () => {
+  const isFull = window.innerWidth >= screen.width - 10 && window.innerHeight >= screen.height - 10;
+  document.body.classList.toggle("fullscreen-mode", isFull);
+});
+</script>
+</body>
+</html>

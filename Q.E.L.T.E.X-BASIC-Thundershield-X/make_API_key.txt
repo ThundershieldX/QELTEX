@@ -1,0 +1,10 @@
+Step-by-Step: Create a Gemini API Key
+
+1. Open Google AI Studio: Go to aistudio.google.com and sign in with your Google account.
+2. Open the dashboard: Click on Dashboard in the left sidebar (under the MANAGE heading).
+3. Go to the key overview: Click on API Keys at the top of the menu that opens (under the PROJECT heading, right above Projects).
+4. Start creation: Click the Create API key button (in the top right corner of the main screen).
+5. Connect to a project:
+   • Click the search field to select an existing Google Cloud project from the dropdown list, or
+   • Click Create API key in new project if you do not have an existing project (and accept the terms of service if prompted).
+6. Copy the key: Click the copy icon next to the generated key (starts with AIza...) and paste it into your password manager.
