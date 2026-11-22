@@ -388,18 +388,68 @@ function drawActive2dHud(now = 0) {
 
   // 8. LEGACY RADAR
   else {
-    const speakMult = isSpeaking ? 2.8 : 1.0;
-    hud2dRings[0] = (hud2dRings[0] + 0.015 * speakMult) % (Math.PI * 2);
-    hud2dRings[1] = (hud2dRings[1] - 0.01 * speakMult) % (Math.PI * 2);
-    hud2dRings[2] = (hud2dRings[2] + 0.022 * speakMult) % (Math.PI * 2);
-    hud2dScan = (hud2dScan + 0.03 * speakMult) % (Math.PI * 2);
+    const speakMult = isSpeaking ? 3.2 : 1.0;
+    hud2dRings[0] = (hud2dRings[0] + 0.012 * speakMult) % (Math.PI * 2);
+    hud2dRings[1] = (hud2dRings[1] - 0.018 * speakMult) % (Math.PI * 2);
+    hud2dRings[2] = (hud2dRings[2] + 0.008 * speakMult) % (Math.PI * 2);
+    hud2dScan = (hud2dScan + 0.035 * speakMult) % (Math.PI * 2);
 
+    ctx.save();
+    ctx.shadowColor = themeHex;
+    ctx.shadowBlur = isSpeaking ? 18 : 8;
+
+    // 1. Ytre segmentert sikte-ring
+    const segments = 12;
+    const segAngle = (Math.PI * 2) / segments;
+    for (let i = 0; i < segments; i++) {
+      const a1 = hud2dRings[0] + i * segAngle;
+      const a2 = a1 + segAngle * 0.65;
+      ctx.strokeStyle = (i % 3 === 0 && isSpeaking) ? "#ffffff" : themeHex;
+      ctx.lineWidth = isSpeaking ? 3.5 : 2.0;
+      ctx.beginPath();
+      ctx.arc(cx, cy, fw * 0.45, a1, a2);
+      ctx.stroke();
+    }
+
+    // 2. Roterende sekskant-skjold
+    ctx.strokeStyle = isSpeaking ? "#ffffff" : themeHex;
+    ctx.lineWidth = isSpeaking ? 2.5 : 1.5;
+    ctx.beginPath();
+    for (let i = 0; i <= 6; i++) {
+      const angle = hud2dRings[1] + (i * Math.PI) / 3;
+      const rHex = fw * (isSpeaking ? 0.36 + Math.sin(hud2dTick * 0.3) * 0.015 : 0.35);
+      const hx = cx + Math.cos(angle) * rHex;
+      const hy = cy + Math.sin(angle) * rHex;
+      if (i === 0) ctx.moveTo(hx, hy);
+      else ctx.lineTo(hx, hy);
+    }
+    ctx.stroke();
+
+    // 3. Sirkulære lydbølge-stolper rundt kjernen
+    const bars = 36;
+    for (let i = 0; i < bars; i++) {
+      const ba = hud2dRings[2] + (i * Math.PI * 2) / bars;
+      const wave = isSpeaking
+        ? Math.abs(Math.sin(hud2dTick * 0.35 + i * 0.7)) * (fw * 0.08) + 4
+        : Math.abs(Math.sin(hud2dTick * 0.05 + i * 0.4)) * 4 + 2;
+      const rIn = fw * 0.24;
+      const rOut = rIn + wave;
+
+      ctx.strokeStyle = (isSpeaking && wave > fw * 0.05) ? "#ffffff" : themeHex;
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(ba) * rIn, cy + Math.sin(ba) * rIn);
+      ctx.lineTo(cx + Math.cos(ba) * rOut, cy + Math.sin(ba) * rOut);
+      ctx.stroke();
+    }
+
+    // 4. Utvidende sjokkbølger når Q.E.L.T.E.X snakker
     if (isSpeaking) {
-      for (let i = 0; i < 3; i++) {
-        const prog = ((hud2dTick * 0.03 + i * 0.33) % 1.0);
-        const pr = fw * 0.22 + prog * (fw * 0.28);
+      for (let i = 0; i < 2; i++) {
+        const prog = (hud2dTick * 0.035 + i * 0.5) % 1.0;
+        const pr = fw * 0.22 + prog * (fw * 0.26);
         ctx.strokeStyle = themeHex;
-        ctx.globalAlpha = 0.75 * (1 - prog);
+        ctx.globalAlpha = 0.65 * (1 - prog);
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(cx, cy, pr, 0, Math.PI * 2);
@@ -408,33 +458,22 @@ function drawActive2dHud(now = 0) {
       ctx.globalAlpha = 1.0;
     }
 
-    [0.44, 0.36, 0.28].forEach((rf, i) => {
-      ctx.strokeStyle = themeHex;
-      ctx.lineWidth = (isSpeaking ? 4.2 : 2.8) - i * 0.6;
-      ctx.beginPath();
-      ctx.arc(cx, cy, fw * rf, hud2dRings[i], hud2dRings[i] + Math.PI * 1.35);
-      ctx.stroke();
-    });
-
-    ctx.strokeStyle = isSpeaking ? "#ffffff" : themeHex;
-    ctx.lineWidth = isSpeaking ? 4 : 2.8;
+    // 5. Indre kjerne og tekst
+    const orbPulse = isSpeaking ? (1.0 + Math.sin(hud2dTick * 0.45) * 0.1) : 1.0;
+    ctx.fillStyle = isSpeaking ? "rgba(0, 255, 130, 0.25)" : "rgba(0, 80, 45, 0.35)";
     ctx.beginPath();
-    ctx.arc(cx, cy, fw * 0.46, hud2dScan, hud2dScan + (isSpeaking ? 1.5 : 0.75));
-    ctx.stroke();
-
-    const orbPulse = isSpeaking ? (1.0 + Math.sin(hud2dTick * 0.4) * 0.14) : 1.0;
-    ctx.fillStyle = isSpeaking ? "rgba(0, 255, 85, 0.35)" : "rgba(0, 110, 40, 0.45)";
-    ctx.beginPath();
-    ctx.arc(cx, cy, fw * 0.22 * orbPulse, 0, Math.PI * 2);
+    ctx.arc(cx, cy, fw * 0.21 * orbPulse, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.strokeStyle = isSpeaking ? "#ffffff" : themeHex;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     ctx.stroke();
 
     ctx.fillStyle = isSpeaking ? "#ffffff" : themeHex;
-    ctx.font = isSpeaking ? "bold 15px 'Courier New', monospace" : "bold 14px 'Courier New', monospace";
+    ctx.font = "bold 14px 'Courier New', monospace";
     ctx.textAlign = "center";
     ctx.fillText("Q.E.L.T.E.X", cx, cy + 5);
+
+    ctx.restore();
   }
 }
