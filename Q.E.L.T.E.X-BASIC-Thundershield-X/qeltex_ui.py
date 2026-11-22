@@ -565,7 +565,9 @@ class qeltexUI:
         global _WV_WINDOW
         self._win = MainWindow()
         self._api = JsApi()
-
+        if module_name:
+            self._win._push_js("setEdition", str(module_name))
+            
         title = (
             f"Q.E.L.T.E.X [{module_name}] — THUNDERSHIELD PROTOCOL"
             if module_name
