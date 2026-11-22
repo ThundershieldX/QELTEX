@@ -671,7 +671,10 @@
       </div>
     </div>
 
-    <div class="hdr-clock" id="hdr-clock">00:00:00</div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <span id="hdr-edition" style="font-size:11px; letter-spacing:2px; padding:3px 9px; border:1px solid var(--accent); border-radius:3px; color:var(--accent); font-weight:bold; display:none;"></span>
+      <div class="hdr-clock" id="hdr-clock">00:00:00</div>
+    </div>
   </header>
 
   <main id="workspace">
@@ -801,7 +804,7 @@
       <span id="ftr-proc">PROC  --</span>
       <span id="ftr-os">OS  WIN</span>
     </div>
-    <div>Thundershield-X  ·  QELTEX LAYER INTERFACE  ·  CLASSIFIED MATERIAL</div>
+     <div id="ftr-edition">Thundershield-X  ·  QELTEX LAYER INTERFACE  ·  CLASSIFIED MATERIAL</div>
     <div>© Thundershield-X</div>
   </footer>
 
@@ -1062,6 +1065,18 @@ window.qeltexBridge = {
   setTheme(t) {
     appState.theme = t;
     applyThemeCss(t);
+  },
+  setEdition(ed) {
+    if (!ed) return;
+    const badge = document.getElementById("hdr-edition");
+    if (badge) {
+      badge.textContent = ed.toUpperCase();
+      badge.style.display = "inline-block";
+    }
+    const ftr = document.getElementById("ftr-edition");
+    if (ftr) {
+      ftr.textContent = `Thundershield-X  ·  QELTEX [${ed.toUpperCase()}] LAYER INTERFACE  ·  CLASSIFIED MATERIAL`;
+    }
   },
   setHudStyle(h) {
     appState.hud = (h || "3d qeltex").toLowerCase().trim();
