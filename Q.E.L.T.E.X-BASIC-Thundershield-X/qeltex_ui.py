@@ -551,14 +551,7 @@ class MainWindow(QWidget):
             "os": os_label,
             "ready": self._ready,
             "pin_required": has_pin,
-            "pin_cameras": cams_info,
-            "eaton": eaton_reg,
-            "shc": shc_reg,
-            "plugs": plugs_reg,
-            "gates": gates_status,
             "budget": budget_text,
-            "visuals": visuals_list,
-            "games": games_list,
             "metrics": _metrics.snapshot()
         }
 
