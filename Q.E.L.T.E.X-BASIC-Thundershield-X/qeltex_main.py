@@ -6,23 +6,10 @@ import json
 import sys
 import multiprocessing
 multiprocessing.freeze_support()
-
-if "--overlay" in sys.argv:
-    _ov_idx = sys.argv.index("--overlay")
-    _ov_mode = sys.argv[_ov_idx + 1] if len(sys.argv) > _ov_idx + 1 else "matrix"
-    _ov_game = (sys.argv[_ov_idx + 2] == "1") if len(sys.argv) > _ov_idx + 2 else False
-    from PyQt6.QtWidgets import QApplication
-    from qeltex_ui import VisualOverlayWindow
-    _ov_app = QApplication(sys.argv)
-    _ov_win = VisualOverlayWindow(mode=_ov_mode, is_game=_ov_game)
-    _ov_win.show()
-    sys.exit(_ov_app.exec())
-
 import time
 import traceback
 import subprocess
 from pathlib import Path
-from PyQt6.QtWebEngineWidgets import QWebEngineView
 
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 os.environ["QT_LOGGING_RULES"] = "qt.qpa.window=false"
@@ -194,6 +181,25 @@ TOOL_DECLARATIONS = [
                 }
             },
             "required": ["action"]
+        }
+    },
+    {
+        "name": "network_shield",
+        "description": "Runs a network security scan and displays network shield telemetry in the automation terminal stream.",
+        "parameters": {"type": "OBJECT", "properties": {}}
+    },
+    {
+        "name": "activate_hud_display",
+        "description": "Switches the central 3D/2D HUD hologram style.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "mode": {
+                    "type": "STRING",
+                    "description": "Target HUD mode: '3d qeltex', 'light core', 'cpu core', 'dna core', 'tactical red', 'blue earth', 'legacy radar', or 'classic'."
+                }
+            },
+            "required": ["mode"]
         }
     },
     {
@@ -1399,82 +1405,12 @@ class qeltexLive:
             print("[qeltex] 🔄 Reconnecting in 3 seconds...")
             await asyncio.sleep(3)
 
-def mousePressEvent(self, event):
-        if hasattr(self.ui, "effect") and self.ui.effect:
-            if hasattr(self.ui.effect, "mousePressEvent"):
-                try:
-                    self.ui.effect.mousePressEvent(event)
-                except Exception:
-                    pass
-
 def main():
     try:
         ui = qeltexUI("BASIC")
     except Exception as e:
         print(f"[qeltex] ❌ Critical failure initializing main user interface layout context: {e}")
         return
-
-    import qeltex_ui
-
-    qeltex_ui.MainWindow._stealth_active = False
-    _orig_resize = qeltex_ui.MainWindow.resizeEvent
-
-    def _custom_resize(self, event):
-        if getattr(self, '_stealth_active', False):
-            super(qeltex_ui.MainWindow, self).resizeEvent(event)
-            W = self._central.width()
-            H = self._central.height()
-            if W <= 0 or H <= 0:
-                return
-            self._right_panel.setGeometry(-1000, -1000, 0, 0)
-            self.header_widget.setGeometry(-1000, -1000, 0, 0)
-            self.footer_widget.setGeometry(-1000, -1000, 0, 0)
-            self._control_bar_layout.setGeometry(-1000, -1000, 0, 0)
-            self._left_panel.setGeometry(-1000, -1000, 0, 0)
-            
-            if hasattr(self, "_center_metrics_widget") and self._center_metrics_widget:
-                self._center_metrics_widget.setGeometry(-1000, -1000, 0, 0)
-                
-            if hasattr(self, "_button_grid_widget") and self._button_grid_widget:
-                self._button_grid_widget.setGeometry(-1000, -1000, 0, 0)
-            hud_sz = min(720, int(H * 0.85))
-            self.hud.setGeometry((W - hud_sz) // 2, (H - hud_sz) // 2, hud_sz, hud_sz)
-            if hasattr(self, '_stealth_menu'):
-                self._stealth_menu.setParent(self._central)
-                self._stealth_menu.setGeometry(30, H - 75, 250, 45)
-                self._stealth_menu.show()
-        else:
-            _orig_resize(self, event)
-
-    qeltex_ui.MainWindow.resizeEvent = _custom_resize
-
-    def _stealth(self):
-        if hasattr(self, '_win'):
-            self._win._stealth_active = True
-            self._win.resizeEvent(None)
-        print("Success: Stealth mode active")
-
-    def _tactical(self):
-        if hasattr(self, '_win'):
-            self._win._stealth_active = False
-            if hasattr(self._win, '_stealth_menu') and hasattr(self._win, '_left_panel'):
-                self._win._stealth_menu.setParent(self._win._left_panel)
-            self._win.resizeEvent(None)
-        print("Success: Tactical HUD active")
-
-    qeltex_ui.qeltexUI.activate_stealth_mode = _stealth
-    qeltex_ui.qeltexUI.activate_tactical_mode = _tactical
-
-    def _lock(self):
-        if hasattr(self, '_win') and hasattr(self._win, 'activate_pin_lock'):
-            self._win.activate_pin_lock()
-        print("Success: Lock mode active")
-    
-    qeltex_ui.qeltexUI.activate_pin_lock = _lock
-    
-    if hasattr(ui, '_win'):
-        ui._win.activate_stealth_mode = lambda: _stealth(ui)
-        ui._win.activate_tactical_mode = lambda: _tactical(ui)
 
     def runner():
         try:
