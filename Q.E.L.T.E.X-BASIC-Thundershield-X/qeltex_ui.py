@@ -2,23 +2,14 @@ from __future__ import annotations
 import os
 import sys
 import json
-import math
 import time
-import random
 import platform
 import subprocess
 import threading
-import importlib.util
 from pathlib import Path
 
 import psutil
 import webview
-from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal, pyqtSlot, QUrl
-from PyQt6.QtGui import QFont, QPainter
-from PyQt6.QtWidgets import (
-    QApplication, QWidget, QPushButton, QDialog, QVBoxLayout, QFileDialog
-)
-from PyQt6.QtWebEngineWidgets import QWebEngineView
 
 
 def _base_dir() -> Path:
@@ -31,12 +22,14 @@ BASE_DIR    = _base_dir()
 _BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", BASE_DIR))
 CONFIG_DIR  = BASE_DIR / "config"
 API_FILE    = CONFIG_DIR / "api_keys.json"
-HTML_FILE   = (_BUNDLE_DIR / "qeltex_index.html") if (_BUNDLE_DIR / "qeltex_index.html").exists() else (BASE_DIR / "qeltex_index.html")
-_OS         = platform.system()
+HTML_FILE   = (
+    (_BUNDLE_DIR / "qeltex_index.html")
+    if (_BUNDLE_DIR / "qeltex_index.html").exists()
+    else (BASE_DIR / "qeltex_index.html")
+)
+_OS = platform.system()
 
-EFFECTS = {}
-
-_MAIN_WIN = None
+_MAIN_WIN: MainWindow | None = None
 _WV_WINDOW = None
 
 
@@ -48,8 +41,6 @@ class _SysMetrics:
         self.gpu = -1.0
         self.r_io = 0.0
         self.w_io = 0.0
-        self.adb_status = "OFF"
-        self.adb_device = ""
         self._lock = threading.Lock()
         try:
             self._last_net = psutil.net_io_counters()
@@ -74,8 +65,10 @@ class _SysMetrics:
                 dt = max(0.1, now - self._last_t)
                 nc = psutil.net_io_counters()
                 if self._last_net and nc:
-                    net = ((nc.bytes_sent - self._last_net.bytes_sent) +
-                           (nc.bytes_recv - self._last_net.bytes_recv)) / dt / (1024 * 1024)
+                    net = (
+                        (nc.bytes_sent - self._last_net.bytes_sent)
+                        + (nc.bytes_recv - self._last_net.bytes_recv)
+                    ) / dt / (1024 * 1024)
                 else:
                     net = 0.0
                 self._last_net = nc
@@ -103,8 +96,10 @@ class _SysMetrics:
         try:
             r = subprocess.run(
                 ["nvidia-smi", "--query-gpu=utilization.gpu", "--format=csv,noheader,nounits"],
-                capture_output=True, text=True, timeout=1.5,
-                creationflags=subprocess.CREATE_NO_WINDOW if _OS == "Windows" else 0
+                capture_output=True,
+                text=True,
+                timeout=1.5,
+                creationflags=subprocess.CREATE_NO_WINDOW if _OS == "Windows" else 0,
             )
             if r.returncode == 0 and r.stdout.strip():
                 vals = [float(x.strip()) for x in r.stdout.strip().splitlines() if x.strip()]
@@ -125,87 +120,17 @@ class _SysMetrics:
                 "w_io": round(self.w_io, 2),
                 "procs": len(psutil.pids()),
                 "uptime": int(time.time() - psutil.boot_time()),
-                "adb_status": "OFF",
-                "adb_device": ""
             }
 
 
 _metrics = _SysMetrics()
 
 
-class VisualOverlayWindow(QWidget):
-    def __init__(self, mode="matrix", is_game=False):
-        super().__init__()
-        self.mode = mode.lower().strip()
-        self.is_game = is_game
-        self._tick = 0
-        self.effect = EFFECTS.get(self.mode)
-
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint |
-            Qt.WindowType.WindowStaysOnTopHint |
-            Qt.WindowType.CustomizeWindowHint
-        )
-        self.showFullScreen()
-        self.setStyleSheet("background-color: black;")
-
-        self.esc_btn = QPushButton("ESC", self)
-        self.esc_btn.setFont(QFont("Courier New", 10, QFont.Weight.Bold))
-        self.esc_btn.setFixedSize(54, 30)
-        self.esc_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.esc_btn.setStyleSheet(
-            "QPushButton { background-color: #051505; color: #00ff55; border: 1px solid #00ff55; }"
-            "QPushButton:hover { background-color: #00ff55; color: black; }"
-        )
-        self.esc_btn.clicked.connect(self.close)
-        self.esc_btn.show()
-
-        if self.effect:
-            self.effect.init_effect(self.width(), self.height())
-
-        QTimer.singleShot(50, self._layout_esc)
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self._update_frame)
-        self.timer.start(16)
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.setFocus()
-
-    def _layout_esc(self):
-        if hasattr(self, "esc_btn"):
-            self.esc_btn.move(self.width() - 70, self.height() - 46)
-            self.esc_btn.raise_()
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self._layout_esc()
-        if self.effect:
-            self.effect.init_effect(self.width(), self.height())
-
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_Escape:
-            self.close()
-        super().keyPressEvent(event)
-
-    def _update_frame(self):
-        self._tick += 1
-        if self.effect:
-            self.effect.update_effect(self.width(), self.height(), self._tick)
-        self.update()
-
-    def paintEvent(self, event):
-        p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        if self.effect:
-            self.effect.paint_effect(p, self.width(), self.height())
-        if hasattr(self, "esc_btn"):
-            self.esc_btn.raise_()
-
-
 class JsApi:
+    """Eksponert til JavaScript som window.pywebview.api"""
+
     def get_initial_state(self):
-        if _MAIN_WIN:
-            return _MAIN_WIN.get_full_state()
-        return {}
+        return _MAIN_WIN.get_full_state() if _MAIN_WIN else {}
 
     def get_metrics(self):
         return _metrics.snapshot()
@@ -237,7 +162,8 @@ class JsApi:
                     _MAIN_WIN.qeltex_terminal_stream.write_output(f"[WEATHER REPORT]\n{res}")
             except Exception as e:
                 if _MAIN_WIN:
-                    _MAIN_WIN._log_sig.emit(f"ERR: Weather matrix failed: {e}")
+                    _MAIN_WIN._push_js("appendLog", f"ERR: Weather matrix failed: {e}")
+
         threading.Thread(target=_open_weather, daemon=True).start()
 
     def set_theme(self, theme_name: str):
@@ -248,40 +174,13 @@ class JsApi:
         if _MAIN_WIN:
             _MAIN_WIN.apply_hud(str(hud_name))
 
-    def launch_visual(self, mode: str):
-        pass
-
-    def launch_game(self, game_key: str):
-        pass
-
     def close_overlays(self):
         if _MAIN_WIN:
             _MAIN_WIN.close_active_overlays()
 
-    def camera_action(self, cam_target: str):
-        pass
-
-    def gate_action(self, action: str, gate_num: str = ""):
-        pass
-
-    def eaton_action(self, action: str, device_id: str = "", state: bool = False):
-        pass
-
-    def shc_action(self, action: str, device_id: str = "", state=None, value=None):
-        pass
-
-    def plug_action(self, device_id: str, zone: str, state: bool):
-        pass
-
-    def hp_action(self, action: str, params: dict = None):
-        pass
-
-    def refresh_submenu(self, menu_type: str):
-        pass
-
     def browse_file(self):
         if _MAIN_WIN:
-            threading.Thread(target=_MAIN_WIN._open_file_dialog, daemon=True).start()
+            _MAIN_WIN._open_file_dialog()
 
     def clear_file(self):
         if _MAIN_WIN:
@@ -299,63 +198,32 @@ class JsApi:
             _MAIN_WIN.activate_pin_lock()
 
     def verify_pin(self, pin_str: str) -> bool:
-        if _MAIN_WIN:
-            return _MAIN_WIN.check_pin(str(pin_str))
-        return True
+        return _MAIN_WIN.check_pin(str(pin_str)) if _MAIN_WIN else True
 
     def save_setup(self, api_key: str, os_name: str) -> bool:
-        if _MAIN_WIN:
-            return _MAIN_WIN.save_initial_setup(str(api_key), str(os_name))
-        return False
+        return _MAIN_WIN.save_initial_setup(str(api_key), str(os_name)) if _MAIN_WIN else False
 
-class _LabelProxy(QObject):
-    """Ekte QObject med @pyqtSlot(str) slik at både .setText() og QMetaObject.invokeMethod() fungerer."""
-    def __init__(self, category: str, key: str, win_ref):
-        super().__init__()
-        self._cat = category
-        self._key = key
+
+class _BudgetLabelProxy:
+    """Beholdt for kompatibilitet med actions/token_budget_shield.py"""
+
+    def __init__(self, win_ref: MainWindow):
         self._win = win_ref
         self._txt = ""
 
-    @pyqtSlot(str)
     def setText(self, text: str):
         self._txt = str(text)
-        self._win._push_js("updateDeviceLabel", {
-            "category": self._cat,
-            "key": self._key,
-            "text": self._txt
-        })
+        self._win._push_js(
+            "updateDeviceLabel",
+            {"category": "budget", "key": "main", "text": self._txt},
+        )
 
     def text(self) -> str:
         return self._txt
 
-    def setStyleSheet(self, _style: str):
-        pass
-
-
-class _SliderProxy(QObject):
-    """Ekte QObject med @pyqtSlot(int) for sanntids synkronisering av SHC-dimmere."""
-    def __init__(self, key: str, win_ref):
-        super().__init__()
-        self._key = key
-        self._win = win_ref
-        self._val = 0
-
-    def blockSignals(self, _b: bool):
-        pass
-
-    @pyqtSlot(int)
-    def setValue(self, val: int):
-        self._val = int(val)
-        self._win._push_js("updateShcSlider", {"key": self._key, "value": self._val})
-
-    def value(self) -> int:
-        return self._val
-
 
 class _ToggleBtnProxy:
-    """Fanger opp .click() / .setText() fra qeltex_main.py for Control Core."""
-    def __init__(self, win_ref):
+    def __init__(self, win_ref: MainWindow):
         self._win = win_ref
 
     def click(self):
@@ -367,8 +235,7 @@ class _ToggleBtnProxy:
 
 
 class _GridWidgetProxy:
-    """Fanger opp .show() / .hide() / .isVisible() fra qeltex_main.py."""
-    def __init__(self, win_ref):
+    def __init__(self, win_ref: MainWindow):
         self._win = win_ref
 
     def show(self):
@@ -394,50 +261,42 @@ class _HudStateProxy:
 
 
 class _TerminalProxy:
-    def __init__(self, win_ref):
+    def __init__(self, win_ref: MainWindow):
         self._win = win_ref
-        self._lines = []
+        self._lines: list[str] = []
+        self._lock = threading.Lock()
 
     def write_output(self, text: str):
         cleaned = str(text or "").strip()
         if cleaned:
-            self._lines.append(cleaned)
-            if len(self._lines) > 250:
-                self._lines = self._lines[-250:]
+            with self._lock:
+                self._lines.append(cleaned)
+                if len(self._lines) > 250:
+                    self._lines = self._lines[-250:]
             self._win._push_js("appendTerminal", cleaned)
 
     def toPlainText(self) -> str:
-        return "\n".join(self._lines)
+        with self._lock:
+            return "\n".join(self._lines)
 
     def clear(self):
-        self._lines.clear()
+        with self._lock:
+            self._lines.clear()
         self._win._push_js("clearTerminal", None)
 
-class _DirectSignalProxy:
+
+class _SignalBridge:
+    """Enkel emit-bro for actions/-moduler som kaller .emit()"""
+
     def __init__(self, callback):
         self._cb = callback
 
     def emit(self, *args):
-        threading.Thread(target=self._cb, args=args, daemon=True).start()        
+        self._cb(*args)
 
 
-class MainWindow(QWidget):
-    _log_sig      = pyqtSignal(str)
-    _state_sig    = pyqtSignal(str)
-    _status_sig   = pyqtSignal(str)
-    _progress_sig = pyqtSignal(int)
-    _visuals_sig  = pyqtSignal(str)
-    _hud_sig      = pyqtSignal(str)
-    _theme_sig    = pyqtSignal(str)
-    _browse_sig   = pyqtSignal()
-    _js_exec_sig  = pyqtSignal(str)
-
-    def resizeEvent(self, event):
-        if event is not None:
-            super().resizeEvent(event)
-
+class MainWindow:
     def __init__(self):
-        super().__init__()
         global _MAIN_WIN
         _MAIN_WIN = self
 
@@ -446,10 +305,11 @@ class MainWindow(QWidget):
         self._current_file: str | None = None
         self._buttons_visible = False
         self._stealth_active = False
-        self._current_overlay = None
         self.hud = _HudStateProxy()
+
         self._js_ready = False
         self._pending_js: list[str] = []
+        self._js_lock = threading.Lock()
 
         self.active_theme = "green"
         self.active_hud = "classic"
@@ -464,45 +324,36 @@ class MainWindow(QWidget):
         self._toggle_trigger_btn = _ToggleBtnProxy(self)
         self._button_grid_widget = _GridWidgetProxy(self)
         self.qeltex_terminal_stream = _TerminalProxy(self)
-        self.qeltex_budget_box = _LabelProxy("budget", "main", self)
-        self.qeltex_status_label = _LabelProxy("status", "main", self)
+        self.qeltex_budget_box = _BudgetLabelProxy(self)
 
-        self._log_sig      = _DirectSignalProxy(lambda t: self._push_js("appendLog", str(t)))
-        self._state_sig    = _DirectSignalProxy(self._apply_state)
-        self._status_sig   = _DirectSignalProxy(lambda t: self._push_js("setStatusText", str(t)))
-        self._progress_sig = _DirectSignalProxy(lambda v: self._push_js("setProgressValue", int(v)))
-        self._visuals_sig  = _DirectSignalProxy(self._launch_visual_overlay)
-        self._hud_sig      = _DirectSignalProxy(self.apply_hud)
-        self._theme_sig    = _DirectSignalProxy(self.apply_theme)
-        self._browse_sig   = _DirectSignalProxy(self._open_file_dialog)
-        self._js_exec_sig  = _DirectSignalProxy(self._eval_in_webview)
+        # Beholdt slik at eksterne actions/-moduler som kaller _hud_sig / _theme_sig / _log_sig fungerer
+        self._log_sig = _SignalBridge(lambda t: self._push_js("appendLog", str(t)))
+        self._hud_sig = _SignalBridge(self.apply_hud)
+        self._theme_sig = _SignalBridge(self.apply_theme)
 
         self._ready = self._check_config()
-        self._start_global_hardware_hook()
 
     def _push_js(self, fn_name: str, payload):
-        try:
-            js_code = f"if(window.qeltexBridge && window.qeltexBridge.{fn_name}){{window.qeltexBridge.{fn_name}({json.dumps(payload)});}}"
+        js_code = (
+            f"if(window.qeltexBridge && window.qeltexBridge.{fn_name})"
+            f"{{window.qeltexBridge.{fn_name}({json.dumps(payload)});}}"
+        )
+        with self._js_lock:
             if not self._js_ready or _WV_WINDOW is None:
                 self._pending_js.append(js_code)
-            else:
-                _WV_WINDOW.evaluate_js(js_code)
-        except Exception:
-            pass
-
-    def _eval_in_webview(self, js_code: str):
+                return
         try:
-            if _WV_WINDOW is not None:
-                _WV_WINDOW.evaluate_js(js_code)
+            _WV_WINDOW.evaluate_js(js_code)
         except Exception:
             pass
 
     def _flush_pending_js(self):
-        self._js_ready = True
-        if _WV_WINDOW is None:
-            return
-        pending = list(self._pending_js)
-        self._pending_js.clear()
+        with self._js_lock:
+            self._js_ready = True
+            if _WV_WINDOW is None:
+                return
+            pending = list(self._pending_js)
+            self._pending_js.clear()
         for code in pending:
             try:
                 _WV_WINDOW.evaluate_js(code)
@@ -510,11 +361,12 @@ class MainWindow(QWidget):
                 pass
 
     def get_full_state(self) -> dict:
-        self.activate_stealth_mode = lambda: self._push_js("setStealthMode", True)
-        self.activate_tactical_mode = lambda: self._push_js("setStealthMode", False)
-        threading.Thread(target=lambda: (time.sleep(0.1), self._flush_pending_js()), daemon=True).start()
+        threading.Thread(
+            target=lambda: (time.sleep(0.1), self._flush_pending_js()),
+            daemon=True,
+        ).start()
 
-        def _read_json(name, default):
+        def _read_json(name: str, default: dict) -> dict:
             p = CONFIG_DIR / name
             if p.exists():
                 try:
@@ -523,14 +375,9 @@ class MainWindow(QWidget):
                     pass
             return default
 
-        eaton_reg = {}
-        shc_reg = {}
-        plugs_reg = {}
-        gates_status = {"status": ["0", "0", "0"], "garage1_temp": "-- °C"}
-
         budget_data = _read_json("token_budget.json", {})
-        saldo_nok = budget_data.get("saldo_nok", None)
-        brukt_nok = budget_data.get("brukt_nok", None)
+        saldo_nok = budget_data.get("saldo_nok")
+        brukt_nok = budget_data.get("brukt_nok")
         if saldo_nok is not None and brukt_nok is not None:
             budget_text = f"SALDO: {float(saldo_nok):.2f} NOK  /  BRUKT: {float(brukt_nok):.2f} NOK"
         else:
@@ -538,11 +385,8 @@ class MainWindow(QWidget):
 
         api_data = _read_json("api_keys.json", {})
         has_pin = bool(str(api_data.get("qeltex_PIN", "")).strip())
-        cams_info = []
-        visuals_list = []
-        games_list = []
-
         os_label = {"Windows": "WIN", "Darwin": "macOS"}.get(_OS, _OS.upper())
+
         return {
             "theme": self.active_theme,
             "hud": self.active_hud,
@@ -552,12 +396,12 @@ class MainWindow(QWidget):
             "ready": self._ready,
             "pin_required": has_pin,
             "budget": budget_text,
-            "metrics": _metrics.snapshot()
+            "metrics": _metrics.snapshot(),
         }
 
     def _apply_state(self, state: str):
         self.hud.state = str(state)
-        self.hud.speaking = (str(state) == "SPEAKING")
+        self.hud.speaking = str(state) == "SPEAKING"
         self._push_js("setAiState", str(state))
 
     def _toggle_mute(self):
@@ -566,7 +410,10 @@ class MainWindow(QWidget):
         st = "MUTED" if self._muted else "LISTENING"
         self._apply_state(st)
         self._push_js("setMuted", self._muted)
-        self._log_sig.emit("SYS: Microphone deactivated." if self._muted else "SYS: Microphone activated.")
+        self._push_js(
+            "appendLog",
+            "SYS: Microphone deactivated." if self._muted else "SYS: Microphone activated.",
+        )
 
     def _toggle_fullscreen(self):
         try:
@@ -602,7 +449,7 @@ class MainWindow(QWidget):
         cleaned = txt.strip()
         if not cleaned:
             return
-        self._log_sig.emit(f"User: {cleaned}")
+        self._push_js("appendLog", f"User: {cleaned}")
         if cleaned.lower() == "pin lock":
             self.activate_pin_lock()
             return
@@ -612,22 +459,13 @@ class MainWindow(QWidget):
     def _trigger_qeltex_vision(self):
         if self.on_text_command:
             self.set_error_text("SYS: Initiating hardware frame capture...")
-            msg = "[SCREEN_PROCESS] angle=screen | text=Analyze the current active window layout and report status parameters in Norwegian."
+            msg = (
+                "[SCREEN_PROCESS] angle=screen | "
+                "text=Analyze the current active window layout and report status parameters in Norwegian."
+            )
             threading.Thread(target=self.on_text_command, args=(msg,), daemon=True).start()
 
-    def _launch_visual_overlay(self, payload: str):
-        pass
-
     def close_active_overlays(self):
-        if self._current_overlay is not None:
-            try:
-                if hasattr(self._current_overlay, "terminate"):
-                    self._current_overlay.terminate()
-                elif hasattr(self._current_overlay, "close"):
-                    self._current_overlay.close()
-            except Exception:
-                pass
-            self._current_overlay = None
         self._push_js("closeDropdowns", None)
 
     def _open_file_dialog(self):
@@ -635,13 +473,20 @@ class MainWindow(QWidget):
             return
         try:
             res = _WV_WINDOW.create_file_dialog(webview.OPEN_DIALOG)
-            if res and len(res) > 0 and Path(res[0]).exists():
-                path = str(res[0])
+            if res and len(res) > 0 and Path(res).exists():
+                path = str(res)
                 self._current_file = path
                 p = Path(path)
                 sz = p.stat().st_size
-                size_str = f"{sz/1024:.1f} KB" if sz < 1024**2 else f"{sz/1024**2:.1f} MB"
-                self._push_js("setFileLoaded", {"name": p.name, "size": size_str, "ext": p.suffix.upper().lstrip(".") or "FILE"})
+                size_str = f"{sz / 1024:.1f} KB" if sz < 1024**2 else f"{sz / 1024**2:.1f} MB"
+                self._push_js(
+                    "setFileLoaded",
+                    {
+                        "name": p.name,
+                        "size": size_str,
+                        "ext": p.suffix.upper().lstrip(".") or "FILE",
+                    },
+                )
                 self._push_js("appendLog", f"FILE: {p.name} ({size_str}) successfully loaded")
                 if self.on_text_command:
                     msg = (
@@ -655,8 +500,7 @@ class MainWindow(QWidget):
             self._push_js("appendLog", f"ERR: File dialog failed: {e}")
 
     def set_error_text(self, text: str):
-        cleaned = str(text or "").strip()
-        self._push_js("setErrorText", cleaned)
+        self._push_js("setErrorText", str(text or "").strip())
 
     def activate_stealth_mode(self):
         self._stealth_active = True
@@ -667,7 +511,7 @@ class MainWindow(QWidget):
         self._push_js("setStealthMode", False)
 
     def activate_pin_lock(self):
-        self._push_js("showPinLock", {"cameras": []})
+        self._push_js("showPinLock", {})
 
     def check_pin(self, pin_str: str) -> bool:
         try:
@@ -675,7 +519,7 @@ class MainWindow(QWidget):
                 d = json.loads(API_FILE.read_text(encoding="utf-8"))
                 expected = str(d.get("qeltex_PIN", ""))
                 if not expected or pin_str.strip() == expected:
-                    self._log_sig.emit("SYSTEM INTERFACE UNLOCKED")
+                    self._push_js("appendLog", "SYSTEM INTERFACE UNLOCKED")
                     return True
                 return False
         except Exception:
@@ -702,44 +546,31 @@ class MainWindow(QWidget):
             API_FILE.write_text(json.dumps(existing, indent=4), encoding="utf-8")
             self._ready = True
             self._apply_state("LISTENING")
-            self._log_sig.emit(f"SYS: Initialization complete. OS={os_name.upper()}. Q.E.L.T.E.X online.")
+            self._push_js(
+                "appendLog",
+                f"SYS: Initialization complete. OS={os_name.upper()}. Q.E.L.T.E.X online.",
+            )
             return True
         except Exception:
             return False
 
-    def _handle_global_hotkey(self, key_id):
-        pass
-
-    def _start_global_hardware_hook(self):
-        if _OS != "Windows":
-            return
-
-        def _hk_worker():
-            pass
-
-        threading.Thread(target=_hk_worker, daemon=True).start()
-
 
 class _RootShim:
-    def __init__(self, win_obj):
-        self._win_obj = win_obj
-
     def mainloop(self):
         webview.start(debug=False)
-
-    def protocol(self, *_):
-        pass
 
 
 class qeltexUI:
     def __init__(self, module_name=None, size=None):
         global _WV_WINDOW
-        self._app = QApplication.instance() or QApplication(sys.argv)
-        self._app.setStyle("Fusion")
         self._win = MainWindow()
         self._api = JsApi()
 
-        title = f"Q.E.L.T.E.X [{module_name}] — THUNDERSHIELD PROTOCOL" if module_name else "Q.E.L.T.E.X — THUNDERSHIELD PROTOCOL"
+        title = (
+            f"Q.E.L.T.E.X [{module_name}] — THUNDERSHIELD PROTOCOL"
+            if module_name
+            else "Q.E.L.T.E.X — THUNDERSHIELD PROTOCOL"
+        )
 
         _WV_WINDOW = webview.create_window(
             title,
@@ -748,9 +579,9 @@ class qeltexUI:
             width=1360,
             height=860,
             min_size=(1024, 700),
-            background_color="#000301"
+            background_color="#000301",
         )
-        self.root = _RootShim(_WV_WINDOW)
+        self.root = _RootShim()
 
     @property
     def muted(self) -> bool:
