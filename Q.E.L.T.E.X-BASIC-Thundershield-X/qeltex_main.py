@@ -849,89 +849,91 @@ class qeltexLive:
 
         result = "Done."
 
-        try:
-            if name == "system_monitor":
-                try:
-                    params = fc.args if hasattr(fc, "args") else {}
-                    action_type = str(params.get("action", "play")).lower().strip()
-                    
-                    if action_type in ("stop", "off", "stopp", "slåav"):
-                        try:
-                            import ctypes
-                            import win32gui
-                            import win32con
+        if name == "system_monitor":
+            try:
+                params = fc.args if hasattr(fc, "args") else {}
+                action_type = str(params.get("action", "play")).lower().strip()
+                
+                if action_type in ("stop", "off", "stopp", "slåav"):
+                    try:
+                        import ctypes
+                        import win32gui
+                        import win32con
+                        
+                        ctypes.windll.winmm.mciSendStringW("stop Q.E.L.T.E.X_S.Y.S_M.A.P", None, 0, 0)
+                        ctypes.windll.winmm.mciSendStringW("close Q.E.L.T.E.X_S.Y.S_M.A.P", None, 0, 0)
+                        
+                        hwnd = win32gui.FindWindow(None, "qeltex_system_diagnostics")
+                        if hwnd:
+                            win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
                             
-                            ctypes.windll.winmm.mciSendStringW("stop Q.E.L.T.E.X_S.Y.S_M.A.P", None, 0, 0)
-                            ctypes.windll.winmm.mciSendStringW("close Q.E.L.T.E.X_S.Y.S_M.A.P", None, 0, 0)
-                            
-                            hwnd = win32gui.FindWindow(None, "qeltex_system_diagnostics")
-                            if hwnd:
-                                win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
-                                
-                            result = "[DIAGNOSTICS CONTROL] Diagnostics overlay terminated cleanly, sir."
-                        except Exception as e:
-                            result = f"ERROR: Ctypes window termination failed: {e}"
-                    else:
-                        result = await loop.run_in_executor(None, lambda: system_monitor(params))
-                except Exception as e:
-                    result = f"ERROR: System monitor operations disruption: {e}"
-                    
-                if hasattr(self.ui, "_win") and hasattr(self.ui._win, "qeltex_terminal_stream"):
-                    self.ui._win.qeltex_terminal_stream.write_output(f"[SYSTEM MONITOR]\n{result}")
-                if not self.ui.muted: 
-                    self.ui.set_state("LISTENING")
-                return types.FunctionResponse(id=fc.id, name=name, response={"status": "complete"})
+                        result = "[DIAGNOSTICS CONTROL] Diagnostics overlay terminated cleanly, sir."
+                    except Exception as e:
+                        result = f"ERROR: Ctypes window termination failed: {e}"
+                else:
+                    result = await loop.run_in_executor(None, lambda: system_monitor(params))
+            except Exception as e:
+                result = f"ERROR: System monitor operations disruption: {e}"
+                
+            if hasattr(self.ui, "_win") and hasattr(self.ui._win, "qeltex_terminal_stream"):
+                self.ui._win.qeltex_terminal_stream.write_output(f"[SYSTEM MONITOR]\n{result}")
+            if not self.ui.muted: 
+                self.ui.set_state("LISTENING")
+            return types.FunctionResponse(id=fc.id, name=name, response={"status": "complete"})
 
-            elif name == "network_shield":
-                result = await loop.run_in_executor(None, network_shield)
-                if hasattr(self.ui, "_win") and hasattr(self.ui._win, "qeltex_terminal_stream"):
-                    self.ui._win.qeltex_terminal_stream.write_output(f"[NETWORK SHIELD]\n{result}")
-                if not self.ui.muted: self.ui.set_state("LISTENING")
-                return types.FunctionResponse(id=fc.id, name=name, response={"status": "complete"})
-
-            elif name == "news_ticker":
-                try:
-                    result = await loop.run_in_executor(None, lambda: news_ticker(parameters=args, player=self.ui))
-                    if result:
-                        if hasattr(self.ui, '_win') and hasattr(self.ui._win, 'qeltex_terminal_stream'):
-                            self.ui._win.qeltex_terminal_stream.write_output(f"[NEWS TICKER]\n{result}")
-                        elif hasattr(self.ui, 'qeltex_terminal_stream'):
-                            self.ui.qeltex_terminal_stream.write_output(f"[NEWS TICKER]\n{result}")
-                except Exception as e:
-                    result = f"Failed to execute news ticker pipeline: {e}"
-                if not self.ui.muted: self.ui.set_state("LISTENING")
-                return types.FunctionResponse(id=fc.id, name=name, response={"status": "complete", "result": str(result)})
-
-            elif name == "morning_digest":
-                try:
-                    self.ui.set_status_text("SYS: Compiling Morning Briefing...")
-                    import threading
-                    def _run_digest():
-                        try:
-                            content = generate_morning_digest(parameters=args, player=self.ui)
-                            if hasattr(self.ui, '_win') and hasattr(self.ui._win, 'qeltex_terminal_stream'):
-                                self.ui._win.qeltex_terminal_stream.write_output(f"[MORNING BRIEFING]\n{content}")
-                            elif hasattr(self.ui, 'qeltex_terminal_stream'):
-                                self.ui.qeltex_terminal_stream.write_output(f"[MORNING BRIEFING]\n{content}")
-                        except Exception as e:
-                            from pathlib import Path
-                            import traceback
-                            with open(Path(__file__).resolve().parent / "morning_error.txt", "w", encoding="utf-8") as f:
-                                f.write(f"Terminal Output Error: {str(e)}\n")
-                                traceback.print_exc(file=f)
-                        if hasattr(self.ui, 'set_status_text'):
-                            self.ui.set_status_text("QELTEX Core: System Standby")
-                    threading.Thread(target=_run_digest, daemon=True).start()
-                    result = "Success"
-                except Exception as e:
-                    result = f"Failed to execute morning briefing pipeline: {e}"
-                if not self.ui.muted: self.ui.set_state("LISTENING")
-                return types.FunctionResponse(id=fc.id, name=name, response={"status": "complete"})
-        except Exception as e:
-            print(f"[qeltex ERROR] Could not execute extension {name}: {e}")
-            result = f"Error executing {name}: {str(e)}"
+        elif name == "network_shield":
+            result = await loop.run_in_executor(None, network_shield)
+            if hasattr(self.ui, "_win") and hasattr(self.ui._win, "qeltex_terminal_stream"):
+                self.ui._win.qeltex_terminal_stream.write_output(f"[NETWORK SHIELD]\n{result}")
             if not self.ui.muted: self.ui.set_state("LISTENING")
-            return types.FunctionResponse(id=fc.id, name=name, response={"result": result})
+            return types.FunctionResponse(id=fc.id, name=name, response={"status": "complete"})
+
+        elif name == "news_ticker":
+            try:
+                self.ui.set_status_text("SYS: Fetching Live NRK News...")
+                import threading
+                def _run_news():
+                    try:
+                        from actions import news_ticker as news_module
+                        content = news_module.news_ticker()
+                        if hasattr(self.ui, '_win') and hasattr(self.ui._win, 'qeltex_terminal_stream'):
+                            self.ui._win.qeltex_terminal_stream.write_output(content)
+                        elif hasattr(self.ui, 'qeltex_terminal_stream'):
+                            self.ui.qeltex_terminal_stream.write_output(content)
+                    except Exception as e:
+                        print(f"[qeltex] News ticker error: {e}")
+                    if hasattr(self.ui, 'set_status_text'):
+                        self.ui.set_status_text("QELTEX Core: System Standby")
+                threading.Thread(target=_run_news, daemon=True).start()
+                result = "Success"
+            except Exception as e:
+                result = f"Failed to execute news ticker pipeline: {e}"
+            if not self.ui.muted: self.ui.set_state("LISTENING")
+            return types.FunctionResponse(id=fc.id, name=name, response={"status": "complete"})
+
+        elif name == "morning_digest":
+            try:
+                self.ui.set_status_text("SYS: Compiling Morning Briefing...")
+                import threading
+                def _run_digest():
+                    try:
+                        from actions import morning_digest
+                        params = dict(fc.args) if hasattr(fc, "args") and fc.args else {}
+                        content = morning_digest.generate_morning_digest(parameters=params)
+                        if hasattr(self.ui, '_win') and hasattr(self.ui._win, 'qeltex_terminal_stream'):
+                            self.ui._win.qeltex_terminal_stream.write_output(f"[MORNING BRIEFING]\n{content}")
+                        elif hasattr(self.ui, 'qeltex_terminal_stream'):
+                            self.ui.qeltex_terminal_stream.write_output(f"[MORNING BRIEFING]\n{content}")
+                    except Exception as e:
+                        print(f"[qeltex] Digest error: {e}")
+                    if hasattr(self.ui, 'set_status_text'):
+                        self.ui.set_status_text("QELTEX Core: System Standby")
+                threading.Thread(target=_run_digest, daemon=True).start()
+                result = "Success"
+            except Exception as e:
+                result = f"Failed to execute morning briefing pipeline: {e}"
+            if not self.ui.muted: self.ui.set_state("LISTENING")
+            return types.FunctionResponse(id=fc.id, name=name, response={"status": "complete"})
 
         try:
             if name == "open_app":
