@@ -22,34 +22,40 @@ def _get_api_key() -> str:
     except Exception:
         return ""
 
+def get_nrk_headlines(limit: int = 8) -> list:
+    if not requests:
+        return []
+    rss_url = "https://nrk.no/nyheter/siste.rss"
+    response = requests.get(rss_url, timeout=5)
+    if response.status_code != 200:
+        return []
+    root = ET.fromstring(response.content)
+    items = root.findall(".//item")
+    results = []
+    for item in items[:limit]:
+        title = item.find("title").text if item.find("title") is not None else "Uten tittel"
+        description = item.find("description").text if item.find("description") is not None else ""
+        if description:
+            description = description.split("<")[0] if "<" in description else description
+            description = " ".join(description.split()).strip()
+        else:
+            description = "Ingen beskrivelse tilgjengelig."
+        results.append({"title": title.strip(), "description": description})
+    return results
+
 def news_ticker(parameters: dict = None, player=None) -> str:
     if not requests:
         return "ERROR: 'requests' library is missing. Please install it to pull down news updates."
 
-    rss_url = "https://nrk.no/nyheter/siste.rss"
-    
     try:
-        response = requests.get(rss_url, timeout=5)
-        if response.status_code != 200:
-            return f"ERROR: Could not connect to target news feed data endpoint (Status: {response.status_code})"
-        
-        root = ET.fromstring(response.content)
-        items = root.findall(".//item")
-        
-        report = "--- Q.E.L.T.E.X DATASTREAM: LIVE NEWS ---\n\n"
-        
-        for i, item in enumerate(items[:5], 1):
-            title = item.find("title").text if item.find("title") is not None else "No title available"
-            description = item.find("description").text if item.find("description") is not None else ""
-            if description:
-                description = description.split("<")[0] if "<" in description else description
-                description = description.strip()
-            else:
-                description = "No description available"
-            
-            report += f"{i}. {title}\n   {description[:140]}...\n\n"
-            
-        report += "-----------------------------------------"
+        articles = get_nrk_headlines(limit=8)
+        if not articles:
+            return "ERROR: Could not retrieve news items from NRK RSS feed."
+
+        report = "--- Q.E.L.T.E.X DATASTREAM: DAGENS NYHETER (TOPP 8) ---\n\n"
+        for i, art in enumerate(articles, 1):
+            report += f"{i}. {art['title']}\n   {art['description'][:160]}...\n\n"
+        report += "--------------------------------------------------------"
 
         if player and hasattr(player, "_win") and hasattr(player._win, "qeltex_terminal_stream"):
             player._win.qeltex_terminal_stream.write_output(report)
