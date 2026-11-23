@@ -49,6 +49,16 @@ try:
     from google.genai import types
 except ImportError:
     MISSING_PACKAGES.append("google-genai")
+try:
+    import PyQt6
+    from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout
+    from PyQt6.QtCore import QUrl
+except ImportError:
+    MISSING_PACKAGES.append("PyQt6")
+try:
+    from PyQt6.QtWebEngineWidgets import QWebEngineView
+except ImportError:
+    MISSING_PACKAGES.append("PyQt6-WebEngine")
 
 if MISSING_PACKAGES:
     print(f"\n❌ [qeltex] CRITICAL SYSTEM ERROR: Missing required installations for the Thundershield protocol!")
