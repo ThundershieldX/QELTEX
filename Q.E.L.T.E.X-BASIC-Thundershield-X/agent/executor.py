@@ -113,7 +113,7 @@ def _run_generated_code(description: str, speak: Callable | None = None) -> str:
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3-flash-preview",
             contents=f"Write Python code to accomplish this task:\n\n{description}",
             config=gtypes.GenerateContentConfig(system_instruction=system_instruction)
         )
@@ -187,7 +187,7 @@ def _detect_language(text: str) -> str:
         from google import genai
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3-flash-preview",
             contents=prompt
         )
         return response.text.strip() if response.text else "English"
@@ -219,7 +219,7 @@ def _translate_to_goal_language(content: str, goal: str) -> str:
             return content
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3-flash-preview",
             contents=prompt
         )
         translated = response.text.strip() if response.text else content
@@ -439,7 +439,7 @@ class AgentExecutor:
                 return fallback
             client = genai.Client(api_key=api_key)
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3-flash-preview",
                 contents=prompt
             )
             summary = response.text.strip() if response.text else fallback

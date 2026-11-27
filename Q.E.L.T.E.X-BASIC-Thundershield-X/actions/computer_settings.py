@@ -745,7 +745,7 @@ def _detect_action(description: str) -> dict:
         available = ", ".join(sorted(ACTION_MAP.keys())) + ", volume_set, type_text, press_key, reload_page_n"
         prompt = f"You are an intent detector for a computer control assistant. The user issued a command: '{description}' Available actions: {available} Return ONLY a valid JSON object: {{\"action\": \"action_name\", \"value\": null_or_value}} Rules: Pick the single best matching action. For volume_set: value is integer 0-100. For type_text: value is exact text. For press_key: value is key name. For reload_page_n: value is integer. Return ONLY the JSON, no markdown."
         resp = client.models.generate_content(
-            model="gemini-2.5-flash-lite",
+            model="gemini-3.5-flash-lite",
             contents=prompt
         )
         text = resp.text.strip() if resp.text else "{}"

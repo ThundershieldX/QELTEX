@@ -120,7 +120,7 @@ def _process_image(path: Path, action: str, params: dict, speak=None) -> str:
             clean_params = params if isinstance(params, dict) else {}
             if clean_params.get("instruction"): prompt = str(clean_params["instruction"])
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3-flash-preview",
                 contents=[prompt, img_part],
                 config=gtypes.GenerateContentConfig(
                     system_instruction="You are Q.E.L.T.E.X. Communicate in flawless Norwegian. Your tone shall be loyal, high-tech, sharp and slightly formal."
@@ -216,7 +216,7 @@ def _process_pdf(path: Path, action: str, params: dict, speak=None) -> str:
             if not path.exists(): return f"PDF file not found: {path.name}"
             client = _gemini_client()
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3-flash-preview",
                 contents=prompt_map.get(action, f"Analyze:\n\n{text}"),
                 config=gtypes.GenerateContentConfig(
                     system_instruction="You are Q.E.L.T.E.X. Communicate in flawless Norwegian."
@@ -299,7 +299,7 @@ def _process_text_doc(path: Path, file_type: str, action: str, params: dict, spe
         if not path.exists(): return f"Document file not found: {path.name}"
         client = _gemini_client()
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3-flash-preview",
             contents=prompt_map[action],
             config=gtypes.GenerateContentConfig(
                 system_instruction="You are Q.E.L.T.E.X. Communicate in flawless Norwegian. Your tone shall be loyal, high-tech, sharp and slightly formal."
@@ -337,7 +337,7 @@ def _process_data(path: Path, file_type: str, action: str, params: dict, speak=N
             prompt = f"Analyze this dataset. Columns: {list(df.columns)}\nRows: {len(df)}\nPreview:\n{preview}"
             client = _gemini_client()
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3-flash-preview",
                 contents=prompt,
                 config=gtypes.GenerateContentConfig(
                     system_instruction="You are Q.E.L.T.E.X. Communicate in flawless Norwegian."
@@ -411,7 +411,7 @@ def _process_json(path: Path, action: str, params: dict, speak=None) -> str:
         try:
             client = _gemini_client()
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3-flash-preview",
                 contents=prompt,
                 config=gtypes.GenerateContentConfig(
                     system_instruction="You are Q.E.L.T.E.X. Communicate in flawless Norwegian."
@@ -451,7 +451,7 @@ def _process_code(path: Path, action: str, params: dict, speak=None) -> str:
     try:
         client = _gemini_client()
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3-flash-preview",
             contents=prompt,
             config=gtypes.GenerateContentConfig(
                 system_instruction="You are Q.E.L.T.E.X. Communicate in flawless Norwegian. Your tone shall be loyal, high-tech, sharp and slightly formal."
@@ -486,7 +486,7 @@ def _process_audio(path: Path, action: str, params: dict, speak=None) -> str:
             mime = {"mp3": "audio/mp3", "wav": "audio/wav", "ogg": "audio/ogg", "m4a": "audio/mp4"}.get(path.suffix.lstrip(".").lower(), "audio/mpeg")
             audio_part = gtypes.Part.from_bytes(data=content, mime_type=mime)
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3-flash-preview",
                 contents=["Transcribe speech accurately. Use Norwegian.", audio_part],
                 config=gtypes.GenerateContentConfig(
                     system_instruction="You are Q.E.L.T.E.X. Communicate in flawless Norwegian."
@@ -569,7 +569,7 @@ def _process_pptx(path: Path, action: str, params: dict, speak=None) -> str:
     try:
         client = _gemini_client()
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3-flash-preview",
             contents=f"Analyze this presentation:\n{full_text[:30000]}",
             config=gtypes.GenerateContentConfig(
                 system_instruction="You are Q.E.L.T.E.X. Communicate in flawless Norwegian."
@@ -600,7 +600,7 @@ def file_processor(parameters: dict, player=None, speak=None) -> str:
             content = path.read_text(encoding="utf-8", errors="ignore")[:10000]
             client = _gemini_client()
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3-flash-preview",
                 contents=f"File: {path.name}\nContent:\n{content}\nTask: {action or instruction or 'Describe.'}",
                 config=gtypes.GenerateContentConfig(
                     system_instruction="You are Q.E.L.T.E.X. Communicate in flawless Norwegian."

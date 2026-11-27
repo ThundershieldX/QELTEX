@@ -177,7 +177,7 @@ def create_plan(goal: str, context: str = "") -> dict:
         if context:
             user_input += f"\n\nContext: {context}"
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3-flash-preview",
             contents=user_input,
             config=gtypes.GenerateContentConfig(system_instruction=PLANNER_PROMPT, response_mime_type="application/json")
         )
@@ -248,7 +248,7 @@ def replan(goal: str, completed_steps: list, failed_step: dict, error: str) -> d
             f"Create a REVISED plan for the remaining work only. Do not repeat completed steps."
         )
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3-flash-preview",
             contents=prompt,
             config=gtypes.GenerateContentConfig(system_instruction=PLANNER_PROMPT, response_mime_type="application/json")
         )

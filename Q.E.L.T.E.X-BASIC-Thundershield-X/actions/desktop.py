@@ -128,7 +128,7 @@ def _ask_gemini_for_desktop_action(task: str) -> str:
         if _OS == "Windows": os_specific = "- ctypes (Windows API calls, read-only)\n- winreg (registry READ only)"
         else: os_specific = "- subprocess is NOT available; use pyautogui or Path only"
         prompt = f"You are a desktop automation assistant.\nCurrent OS: {_OS}\nDesktop path: {desktop}\n\nGenerate safe Python code to accomplish the task below.\nAllowed modules ONLY:\n- pyautogui\n- pathlib.Path\n- shutil.copy2, copytree, disk_usage\n- os_path\n- time.sleep\n{os_specific}\n\nHard rules:\n- NO file deletion\n- NO subprocess calls\n- NO exec() or eval()\n- NO import statements\n- NO file write operations\n- If unsafe, output exactly: UNSAFE\n\nOutput ONLY the Python code. No explanation, no markdown.\n\nTask: {task}"
-        response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+        response = client.models.generate_content(model="gemini-3.5-flash-lite", contents=prompt)
         code = response.text.strip() if response.text else "UNSAFE"
         code = _strip_markdown(code)
         return code

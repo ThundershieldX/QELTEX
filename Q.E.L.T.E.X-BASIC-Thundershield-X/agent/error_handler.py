@@ -70,7 +70,7 @@ def analyze_error(step: dict, error: str, attempt: int = 1, max_attempts: int = 
     try:
         client = genai.Client(api_key=api_key)
         prompt = f"Failed step:\nTool: {step.get('tool')}\nDescription: {step.get('description')}\nParameters: {json.dumps(step.get('parameters', {}))}\nError:\n{error[:500]}\nAttempt number: {attempt}"
-        response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt, config=gtypes.GenerateContentConfig(system_instruction=ERROR_ANALYST_PROMPT, response_mime_type="application/json"))
+        response = client.models.generate_content(model="gemini-3-flash-preview", contents=prompt, config=gtypes.GenerateContentConfig(system_instruction=ERROR_ANALYST_PROMPT, response_mime_type="application/json"))
         text = response.text.strip() if response.text else "{}"
         match = re.search(r"\{.*\}", text, re.DOTALL)
         text = match.group(0) if match else re.sub(r"```(?:json)?", "", text).strip().rstrip("`").strip()
@@ -96,7 +96,7 @@ def generate_fix(step: dict, error: str, fix_suggestion: str) -> dict:
     try:
         client = genai.Client(api_key=_get_api_key())
         prompt = f"A task step failed.\nOriginal tool: {step.get('tool')}\nError: {error[:300]}\nFix suggestion: {fix_suggestion}\nGenerate a script to fix this."
-        response = client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+        response = client.models.generate_content(model="gemini-3-flash-preview", contents=prompt)
         code = response.text.strip() if response.text else ""
         code = re.sub(r"```(?:python)?", "", code).strip().rstrip("`").strip()
         return {"step": step.get("step"), "tool": "generated_code", "description": f"Auto-fix for: {step.get('description')}", "parameters": {"description": fix_suggestion, "code": code}, "depends_on": step.get("depends_on", []), "critical": step.get("critical", False)}
