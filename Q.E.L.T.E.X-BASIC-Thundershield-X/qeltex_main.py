@@ -4,6 +4,10 @@ import re
 import threading
 import json
 import sys
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w", encoding="utf-8")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w", encoding="utf-8")
 import multiprocessing
 multiprocessing.freeze_support()
 import time
@@ -28,7 +32,7 @@ if sys.platform == "win32" and getattr(sys, "frozen", False):
             self.original_popen = original_popen
         def __call__(self, *args, **kwargs):
             args_str = str(args).lower()
-            if any(x in args_str for x in ["portaudio", "sound", "opencv", "video", "cap", "camera"]):
+            if any(x in args_str for x in ["portaudio", "sound", "opencv", "video", "cap", "camera", "edge", "chrome"]):
                 return self.original_popen(*args, **kwargs)
                 
             if "startupinfo" not in kwargs:
@@ -106,14 +110,26 @@ except ImportError as e:
     print(f"\n❌ [qeltex] Critical error: Could not initialize action catalog: {e}")
     sys.exit(1)
 
-def get_base_dir():
+def get_resource_dir():
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS)
+    return Path(__file__).resolve().parent
+
+def get_app_dir():
     if getattr(sys, "frozen", False):
         return Path(sys.executable).parent
     return Path(__file__).resolve().parent
 
-BASE_DIR        = get_base_dir()
-API_CONFIG_PATH = BASE_DIR / "config" / "api_keys.json"
-PROMPT_PATH     = BASE_DIR / "core" / "prompt.txt"
+RESOURCE_DIR = get_resource_dir()
+APP_DIR      = get_app_dir()
+BASE_DIR     = APP_DIR
+
+if (APP_DIR / "config" / "api_keys.json").exists():
+    API_CONFIG_PATH = APP_DIR / "config" / "api_keys.json"
+else:
+    API_CONFIG_PATH = RESOURCE_DIR / "config" / "api_keys.json"
+
+PROMPT_PATH = RESOURCE_DIR / "core" / "prompt.txt"
 
 LIVE_MODEL          = "models/gemini-2.5-flash-native-audio-preview-12-2025"
 CHANNELS            = 1
@@ -1350,6 +1366,13 @@ class qeltexLive:
                 continue
 
     async def run(self):
+        try:
+            import certifi
+            os.environ["SSL_CERT_FILE"] = certifi.where()
+            os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
+        except Exception:
+            pass
+
         while True:
             try:
                 print("[qeltex] 🔌 Connecting to Live Stream API...")
@@ -1406,7 +1429,16 @@ class qeltexLive:
                         tg.create_task(self._play_audio())
                         tg.create_task(self._monitor_keepalive())
             except Exception as e:
-                print(f"[qeltex] 🔌 Session closed or timeout encountered: {e}")
+                if hasattr(e, "exceptions"):
+                    sub_msgs = " | ".join(f"{type(sub).__name__}: {sub}" for sub in e.exceptions)
+                    err_msg = f"SYS: TaskGroup error: {sub_msgs}"
+                else:
+                    err_msg = f"SYS: Connection error: {e}"
+                print(f"[qeltex] 🔌 {err_msg}")
+                try:
+                    self.ui.write_log(err_msg)
+                except Exception:
+                    pass
             
             self.session = None
             self.set_speaking(False)
