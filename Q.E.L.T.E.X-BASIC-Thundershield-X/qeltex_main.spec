@@ -3,6 +3,9 @@ import sys
 import sounddevice
 import cv2
 from pathlib import Path
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+
+certifi_datas = collect_data_files('certifi')
 
 sounddevice_dir = os.path.dirname(sounddevice.__file__)
 cv2_dir = os.path.dirname(cv2.__file__)
@@ -30,12 +33,14 @@ a = Analysis(
         ('memory', 'memory'),
         ('config/world_map.png', 'config'),
         (cv2_dir, 'cv2'),
-        ('qt.conf', '.'),
         ('qeltex_index.html', '.'),
         ('qeltex_huds.js', '.'),
-        ('three.min.js', '.')
-    ] + playwright_datas,
+    ] + ([('three.min.js', '.')] if os.path.exists('three.min.js') else []) + playwright_datas + certifi_datas,
     hiddenimports=[
+        'certifi',
+        'websockets',
+        'httpx',
+        'httpcore',
         'sounddevice',
         'pyaudio',
         'queue',
@@ -92,6 +97,7 @@ a = Analysis(
         'memory.config_manager',
         'memory.memory_manager',
         'actions.browser_control',
+        'actions.capabilities',
         'actions.computer_control',
         'actions.computer_settings',
         'actions.desktop',
